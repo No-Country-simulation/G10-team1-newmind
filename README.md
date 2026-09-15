@@ -108,7 +108,33 @@ El pipeline implementa tipado estricto con **Pydantic** garantizando el esquema 
 
 ---
 
-## 🚀 Guía de Instalación y Ejecución Rápida
+## 🐳 Inicio rápido con Docker
+
+Solo necesitás Docker con Compose. La aplicación funciona sin credenciales externas gracias a los modos locales de LLM y almacenamiento.
+
+```bash
+git clone git@github.com:No-Country-simulation/G10-team1-newmind.git
+cd G10-team1-newmind
+docker compose up --build
+```
+
+Abrí `http://localhost:8501`. ChromaDB y el almacenamiento OCI emulado se conservan en volúmenes de Docker; no se requieren servicios de base de datos o caché adicionales.
+
+Para usar un proveedor LLM real, copiá el ejemplo y completá al menos una API key antes de iniciar Compose:
+
+```bash
+cp .env.example .env
+# Configurá GEMINI_API_KEY u OPENAI_API_KEY en .env
+docker compose up --build
+```
+
+Para detener la aplicación usá `docker compose down`. Agregá `--volumes` únicamente si también querés borrar los datos locales persistidos.
+
+---
+
+## 🚀 Instalación y ejecución sin Docker
+
+El flujo existente con un entorno virtual continúa disponible.
 
 ### 1. Clonar el Repositorio
 ```bash

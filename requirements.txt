@@ -1,5 +1,6 @@
 # --- Framework & UI [Frontend / Full Stack] ---
 streamlit>=1.35.0
+pyarrow==18.1.0
 
 # --- Ingestión & Procesamiento de Documentos [Backend] ---
 pypdf>=4.2.0
@@ -12,7 +13,6 @@ chromadb>=0.5.0
 langchain>=0.2.0
 langchain-community>=0.2.0
 langchain-core>=0.2.0
-sentence-transformers>=3.0.0
 tiktoken>=0.7.0
 
 # --- Proveedores LLM & Orquestación [Architect / Backend] ---

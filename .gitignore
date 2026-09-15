@@ -57,3 +57,6 @@ Thumbs.db
 .coverage
 htmlcov/
 data/oci_local_storage/
+
+# tooling metadata
+.atl/

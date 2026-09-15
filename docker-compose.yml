@@ -1,0 +1,44 @@
+services:
+  app:
+    build:
+      context: .
+    image: g10-team1-newmind:local
+    ports:
+      - "8501:8501"
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      CHROMA_PERSIST_DIR: /app/data/chroma_db
+    volumes:
+      - chroma-data:/app/data/chroma_db
+      - local-storage:/app/data/oci_local_storage
+    restart: unless-stopped
+
+  app-embeddings:
+    profiles:
+      - embeddings
+    build:
+      context: .
+      args:
+        INSTALL_EMBEDDINGS: "true"
+    image: g10-team1-newmind:embeddings-local
+    ports:
+      - "8502:8501"
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      CHROMA_PERSIST_DIR: /app/data/chroma_db
+    volumes:
+      - chroma-data:/app/data/chroma_db
+      - local-storage:/app/data/oci_local_storage
+    restart: unless-stopped
+
+volumes:
+  chroma-data:
+  local-storage:
