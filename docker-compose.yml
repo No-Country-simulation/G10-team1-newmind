@@ -1,0 +1,46 @@
+services:
+  app:
+    build:
+      context: ./newmind-learning-backend
+    image: newmind-learning-backend:local
+    ports:
+      - "8000:8000"
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      BACKEND_PORT: 8000
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      CHROMA_PERSIST_DIR: /app/data/chroma_db
+    volumes:
+      - chroma-data:/app/data/chroma_db
+      - local-storage:/app/data/oci_local_storage
+    restart: unless-stopped
+
+  app-embeddings:
+    profiles:
+      - embeddings
+    build:
+      context: ./newmind-learning-backend
+      args:
+        INSTALL_EMBEDDINGS: "true"
+    image: newmind-learning-backend:embeddings-local
+    ports:
+      - "8001:8000"
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      BACKEND_PORT: 8000
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      CHROMA_PERSIST_DIR: /app/data/chroma_db
+    volumes:
+      - chroma-data:/app/data/chroma_db
+      - local-storage:/app/data/oci_local_storage
+    restart: unless-stopped
+
+volumes:
+  chroma-data:
+  local-storage:
