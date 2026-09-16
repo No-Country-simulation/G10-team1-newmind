@@ -1,67 +1,89 @@
 <div align="center">
 
-# NuevaMente — Frontend
+# 🧠 NuevaMente — Frontend
 
 **Sistema Inteligente de Adaptación y Generación de Contenido Educativo**
 
-Programa ONE · Grupo 10 · Proyecto 1
+*Programa ONE · Grupo 10 · Proyecto 1*
 
 <br/>
 
-![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)
-![Vite](https://img.shields.io/badge/Vite-8-646CFF?style=flat-square&logo=vite&logoColor=white)
-![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-3-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)
-![React Router](https://img.shields.io/badge/React_Router-7-CA4245?style=flat-square&logo=reactrouter&logoColor=white)
-![Axios](https://img.shields.io/badge/Axios-1.x-5A29E4?style=flat-square&logo=axios&logoColor=white)
+[![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
+[![Vite](https://img.shields.io/badge/Vite-8-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev)
+[![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-3-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
+[![React Router](https://img.shields.io/badge/React_Router-7-CA4245?style=for-the-badge&logo=reactrouter&logoColor=white)](https://reactrouter.com)
+[![Axios](https://img.shields.io/badge/Axios-1.x-5A29E4?style=for-the-badge&logo=axios&logoColor=white)](https://axios-http.com)
+
+<br/>
+
+> Interfaz visual del sistema NuevaMente. Permite cargar documentos técnicos, configurar la adaptación educativa y visualizar el contenido generado por el pipeline multiagente.
+
+<br/>
 
 </div>
 
 ---
 
-## Tabla de contenidos
+## 📋 Tabla de contenidos
 
-- [Descripción general](#descripción-general)
-- [Instalación y arranque](#instalación-y-arranque)
-- [Arquitectura — Feature-Sliced Design](#arquitectura--feature-sliced-design)
-- [Estructura de carpetas](#estructura-de-carpetas)
-- [Capa `app`](#capa-app)
-- [Capa `pages`](#capa-pages)
-- [Capa `widgets`](#capa-widgets)
-- [Capa `entities`](#capa-entities)
-- [Capa `shared`](#capa-shared)
-- [Flujo de usuario](#flujo-de-usuario)
-- [Conexión con el backend](#conexión-con-el-backend)
-- [Convenciones de código](#convenciones-de-código)
-- [Diseño y estilos](#diseño-y-estilos)
-
----
-
-## Descripción general
-
-El frontend de NuevaMente es la interfaz visual del sistema. Permite cargar documentos técnicos, configurar cómo se va a adaptar el contenido y visualizar el resultado generado por el pipeline multiagente.
-
-**Responsabilidades del frontend:**
-- Cargar y validar documentos (PDF, Markdown, TXT)
-- Recolectar la configuración de la adaptación (perfil, formato, nicho, nivel de detalle)
-- Visualizar el progreso del pipeline de agentes en tiempo real
-- Renderizar el contenido generado según su formato (flashcards, tutorial, quiz, etc.)
-- Mostrar el historial de adaptaciones con filtros
-
-**Lo que el frontend NO hace:**
-- No tiene lógica de IA — eso vive en el backend
-- No se comunica directamente con Gemini, ChromaDB ni PostgreSQL
-- No accede al sistema de archivos más allá del input de carga
-
-> El frontend funciona completamente con datos simulados mientras el backend no esté disponible. Ver sección [Conexión con el backend](#conexión-con-el-backend).
+- [📖 Descripción general](#-descripción-general)
+- [🚀 Instalación y arranque](#-instalación-y-arranque)
+- [🏗️ Arquitectura — Feature-Sliced Design](#️-arquitectura--feature-sliced-design)
+- [📁 Estructura de carpetas](#-estructura-de-carpetas)
+- [⚙️ Capa `app`](#️-capa-app)
+- [📄 Capa `pages`](#-capa-pages)
+- [🧩 Capa `widgets`](#-capa-widgets)
+- [🗂️ Capa `entities`](#️-capa-entities)
+- [📦 Capa `shared`](#-capa-shared)
+- [🔄 Flujo de usuario](#-flujo-de-usuario)
+- [🔌 Conexión con el backend](#-conexión-con-el-backend)
+- [📐 Convenciones de código](#-convenciones-de-código)
+- [🎨 Diseño y estilos](#-diseño-y-estilos)
 
 ---
 
-## Instalación y arranque
+## 📖 Descripción general
 
-### Requisitos
+El frontend de NuevaMente es la capa visual del sistema. No contiene lógica de IA — su responsabilidad es la experiencia del usuario.
 
-- Node.js 18 o superior
-- npm 9 o superior
+<br/>
+
+<table>
+<tr>
+<td width="50%">
+
+**✅ Responsabilidades**
+
+- Cargar y validar documentos (PDF, MD, TXT)
+- Configurar la adaptación (perfil, formato, nicho, detalle)
+- Visualizar el pipeline multiagente en tiempo real
+- Renderizar el contenido generado por formato
+- Gestionar el historial de adaptaciones con filtros
+
+</td>
+<td width="50%">
+
+**❌ Lo que NO hace**
+
+- No tiene lógica de IA
+- No se comunica con Gemini, ChromaDB ni PostgreSQL
+- No accede al sistema de archivos directamente
+- No conoce los detalles internos del backend
+
+</td>
+</tr>
+</table>
+
+> **Nota:** El frontend funciona completamente con datos simulados mientras el backend no esté disponible. Ver [Conexión con el backend](#-conexión-con-el-backend).
+
+---
+
+## 🚀 Instalación y arranque
+
+### Requisitos previos
+
+- Node.js **18** o superior
+- npm **9** o superior
 
 ### Pasos
 
@@ -69,180 +91,229 @@ El frontend de NuevaMente es la interfaz visual del sistema. Permite cargar docu
 # 1. Instalar dependencias
 npm install
 
-# 2. Crear el archivo de entorno a partir del ejemplo
+# 2. Crear el archivo de entorno
 cp .env.example .env
-```
 
-Editar `.env` y configurar la URL del backend:
-
-```env
+# 3. Configurar la URL del backend en .env
 VITE_API_URL=http://localhost:8000
 ```
 
 ### Comandos disponibles
 
-| Comando | Descripción |
-|---|---|
-| `npm run dev` | Servidor de desarrollo con hot reload en `localhost:5173` |
-| `npm run build` | Build de producción en `dist/` |
-| `npm run preview` | Sirve el build de producción localmente |
-| `npm run lint` | Ejecuta el linter (Oxlint) |
+<br/>
+
+<table>
+<thead>
+<tr>
+<th>Comando</th>
+<th>Descripción</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>npm run dev</code></td>
+<td>Servidor de desarrollo con hot reload en <code>localhost:5173</code></td>
+</tr>
+<tr>
+<td><code>npm run build</code></td>
+<td>Build de producción optimizado en <code>dist/</code></td>
+</tr>
+<tr>
+<td><code>npm run preview</code></td>
+<td>Sirve el build de producción localmente para verificarlo</td>
+</tr>
+<tr>
+<td><code>npm run lint</code></td>
+<td>Ejecuta el linter (Oxlint) sobre todos los archivos</td>
+</tr>
+</tbody>
+</table>
 
 ---
 
-## Arquitectura — Feature-Sliced Design
+## 🏗️ Arquitectura — Feature-Sliced Design
 
-El proyecto sigue **Feature-Sliced Design (FSD)**, una metodología de arquitectura por capas para aplicaciones frontend. La regla central es que **una capa solo puede importar desde capas inferiores**, nunca de las superiores.
+El proyecto sigue **Feature-Sliced Design (FSD)**, una metodología de arquitectura por capas. La regla central es que **una capa solo puede importar desde capas inferiores**, nunca de las superiores.
+
+<br/>
 
 ```
-┌──────────────────────────────────────────────────────────┐
-│  app        Configuración global, providers y router     │
-├──────────────────────────────────────────────────────────┤
-│  pages      Pantallas completas (una por ruta)           │
-├──────────────────────────────────────────────────────────┤
-│  widgets    Bloques funcionales complejos                 │
-├──────────────────────────────────────────────────────────┤
-│  entities   Representación visual de objetos del dominio │
-├──────────────────────────────────────────────────────────┤
-│  shared     UI base, hooks, API client y utilidades      │
-└──────────────────────────────────────────────────────────┘
-         Cada capa solo importa desde las que están debajo
+┌──────────────────────────────────────────────────────────────┐
+│   app          Configuración global, providers y router      │
+├──────────────────────────────────────────────────────────────┤
+│   pages        Pantallas completas — una por ruta            │
+├──────────────────────────────────────────────────────────────┤
+│   widgets      Bloques funcionales complejos                  │
+├──────────────────────────────────────────────────────────────┤
+│   entities     Representación visual de objetos del dominio  │
+├──────────────────────────────────────────────────────────────┤
+│   shared       UI base, hooks, API client y utilidades       │
+└──────────────────────────────────────────────────────────────┘
+          ↑ cada capa solo importa desde las que están debajo
 ```
 
-**Ejemplo correcto:** una `page` importa un `widget` o algo de `shared`.  
-**Ejemplo incorrecto:** un `widget` importa algo de `pages` — esto rompe la arquitectura.
+<br/>
 
-Esta regla evita dependencias circulares y hace que cada módulo sea comprensible de forma aislada.
+<table>
+<thead>
+<tr>
+<th>Situación</th>
+<th>¿Permitido?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Una <code>page</code> importa un <code>widget</code></td>
+<td>✅ Correcto</td>
+</tr>
+<tr>
+<td>Un <code>widget</code> importa algo de <code>shared</code></td>
+<td>✅ Correcto</td>
+</tr>
+<tr>
+<td>Un <code>widget</code> importa algo de <code>pages</code></td>
+<td>❌ Rompe la arquitectura</td>
+</tr>
+<tr>
+<td>Un <code>entity</code> importa un <code>widget</code></td>
+<td>❌ Rompe la arquitectura</td>
+</tr>
+</tbody>
+</table>
 
 ---
 
-## Estructura de carpetas
+## 📁 Estructura de carpetas
 
 ```
 src/
 │
-├── App.jsx                          Componente raíz: layout (Sidebar + área principal)
-├── main.jsx                         Punto de entrada: monta React en el DOM
+├── App.jsx                              Componente raíz: layout (Sidebar + área principal)
+├── main.jsx                             Punto de entrada: monta React en el DOM
 │
 ├── app/
-│   ├── providers/
-│   │   └── index.jsx                BrowserRouter y futuros providers globales
-│   ├── router/
-│   │   └── index.jsx                Definición de las 4 rutas de la aplicación
-│   └── styles/
-│       └── globals.css              Tailwind, fuente Inter y clases CSS reutilizables
+│   ├── providers/index.jsx              BrowserRouter y futuros providers globales
+│   ├── router/index.jsx                 Definición de las 4 rutas de la aplicación
+│   └── styles/globals.css              Tailwind, fuente Inter y clases CSS reutilizables
 │
 ├── pages/
-│   ├── dashboard/
-│   │   └── DashboardPage.jsx        Ruta /          — Inicio, stats y adaptaciones recientes
+│   ├── dashboard/DashboardPage.jsx      /          — Inicio, stats y adaptaciones recientes
 │   ├── new-adaptation/
-│   │   └── NewAdaptationPage.jsx    Ruta /new       — Carga de documento y configuración
-│   ├── result/
-│   │   └── ResultPage.jsx           Ruta /result/:id — Pipeline en vivo y resultado
-│   └── history/
-│       └── HistoryPage.jsx          Ruta /history   — Historial con filtros
+│   │   └── NewAdaptationPage.jsx        /new       — Carga de documento y configuración
+│   ├── result/ResultPage.jsx            /result/:id — Pipeline en vivo y resultado final
+│   └── history/HistoryPage.jsx          /history   — Historial con filtros
 │
 ├── widgets/
 │   ├── adaptation-form/
-│   │   └── AdaptationForm.jsx       Formulario multi-paso (perfil → formato → nicho → detalle)
+│   │   └── AdaptationForm.jsx           Formulario multi-paso (perfil→formato→nicho→detalle)
 │   ├── content-viewer/
-│   │   └── ContentViewer.jsx        Visualizador del contenido generado por formato
+│   │   └── ContentViewer.jsx            Visualizador del contenido generado por formato
 │   ├── document-uploader/
-│   │   └── DocumentUploader.jsx     Zona drag-and-drop para cargar archivos
+│   │   └── DocumentUploader.jsx         Zona drag-and-drop para cargar archivos
 │   └── generation-status/
-│       └── GenerationStatus.jsx     Pipeline multiagente animado en tiempo real
+│       └── GenerationStatus.jsx         Pipeline multiagente animado en tiempo real
 │
 ├── entities/
-│   ├── adaptation/
-│   │   └── ui/
-│   │       └── AdaptationCard.jsx   Tarjeta resumen de una adaptación
-│   └── document/
-│       └── ui/
-│           └── DocumentCard.jsx     Tarjeta resumen de un documento
+│   ├── adaptation/ui/AdaptationCard.jsx Tarjeta resumen de una adaptación
+│   └── document/ui/DocumentCard.jsx     Tarjeta resumen de un documento
 │
 └── shared/
-    ├── api/
-    │   └── index.js                 Cliente Axios y todos los endpoints del backend
+    ├── api/index.js                     Cliente Axios y todos los endpoints del backend
     ├── hooks/
-    │   ├── useApi.js                Hook genérico para llamadas async con loading/error
-    │   └── useLocalStorage.js       Estado sincronizado con localStorage
-    ├── types/
-    │   └── index.js                 Tipos JSDoc del dominio y constantes de opciones
+    │   ├── useApi.js                    Hook genérico para llamadas async con loading/error
+    │   └── useLocalStorage.js           Estado sincronizado con localStorage
+    ├── types/index.js                   Tipos JSDoc del dominio y constantes de opciones
     ├── ui/
-    │   ├── Alert.jsx                Alert · EmptyState · ScoreRing
-    │   ├── Badge.jsx                Etiquetas pill con 7 variantes de color
-    │   ├── Button.jsx               Botón con 5 variantes, 3 tamaños y estado loading
-    │   ├── Card.jsx                 Card · CardHeader
-    │   ├── Input.jsx                Input · Select con label, hint y error
-    │   ├── Sidebar.jsx              Barra lateral fija con navegación principal
-    │   └── Spinner.jsx              Spinner · PageLoader · Skeleton
-    └── utils/
-        └── index.js                 cn, formatDate, formatFileSize, truncate, etc.
+    │   ├── Alert.jsx                    Alert · EmptyState · ScoreRing
+    │   ├── Badge.jsx                    Etiquetas pill con 7 variantes de color
+    │   ├── Button.jsx                   Botón con 5 variantes, 3 tamaños y estado loading
+    │   ├── Card.jsx                     Card · CardHeader
+    │   ├── Input.jsx                    Input · Select con label, hint y error
+    │   ├── Sidebar.jsx                  Barra lateral fija con navegación principal
+    │   └── Spinner.jsx                  Spinner · PageLoader · Skeleton
+    └── utils/index.js                   cn, formatDate, formatFileSize, truncate, etc.
 ```
 
 ---
 
-## Capa `app`
+## ⚙️ Capa `app`
 
 Configura la aplicación antes de que se renderice cualquier pantalla.
 
-### `app/providers/index.jsx`
+<br/>
 
-Envuelve la app en `BrowserRouter` para habilitar la navegación. Es el lugar donde agregar futuros providers globales (autenticación, React Query, tema, etc.).
+<details>
+<summary><strong>app/providers/index.jsx</strong></summary>
+<br/>
 
-### `app/router/index.jsx`
+Envuelve la app en `BrowserRouter` para habilitar la navegación. Es el lugar donde agregar futuros providers globales como autenticación, React Query o sistema de tema.
 
-Define las rutas de la aplicación usando React Router v7.
+</details>
 
-| Ruta | Componente | Descripción |
-|---|---|---|
-| `/` | `DashboardPage` | Inicio del sistema |
-| `/new` | `NewAdaptationPage` | Crear nueva adaptación |
-| `/result/:id` | `ResultPage` | Ver resultado de una adaptación |
-| `/history` | `HistoryPage` | Historial de adaptaciones |
-| `*` | Redirect a `/` | Cualquier ruta no reconocida |
+<details>
+<summary><strong>app/router/index.jsx</strong></summary>
+<br/>
 
-### `app/styles/globals.css`
+Define las rutas de la aplicación con React Router v7.
+
+<br/>
+
+<table>
+<thead>
+<tr><th>Ruta</th><th>Componente</th><th>Descripción</th></tr>
+</thead>
+<tbody>
+<tr><td><code>/</code></td><td><code>DashboardPage</code></td><td>Inicio del sistema</td></tr>
+<tr><td><code>/new</code></td><td><code>NewAdaptationPage</code></td><td>Crear nueva adaptación</td></tr>
+<tr><td><code>/result/:id</code></td><td><code>ResultPage</code></td><td>Ver resultado de una adaptación</td></tr>
+<tr><td><code>/history</code></td><td><code>HistoryPage</code></td><td>Historial de adaptaciones</td></tr>
+<tr><td><code>*</code></td><td>Redirect a <code>/</code></td><td>Cualquier ruta no reconocida</td></tr>
+</tbody>
+</table>
+
+</details>
+
+<details>
+<summary><strong>app/styles/globals.css</strong></summary>
+<br/>
 
 - Importa la fuente **Inter** desde Google Fonts (pesos 300–800)
 - Inicializa Tailwind con `@tailwind base/components/utilities`
 - Define el tema oscuro como base (`bg-slate-950`)
-- Declara clases reutilizables como `@layer components`: `.btn-primary`, `.input-field`, `.label`, `.page-title`, `.section-title`, `.glass-card`, `.gradient-text`
+- Declara clases utilitarias reutilizables: `.btn-primary`, `.input-field`, `.label`, `.page-title`, `.glass-card`, `.gradient-text`
+
+</details>
 
 ---
 
-## Capa `pages`
+## 📄 Capa `pages`
 
-Una página por ruta. Las páginas orquestan widgets y entities, pero no contienen lógica de UI reutilizable.
+Una página por ruta. Orquestan widgets y entities pero no contienen lógica de UI reutilizable.
 
----
+<br/>
 
 ### `DashboardPage` — `/`
 
-Pantalla de inicio. Primer punto de contacto del usuario con el sistema.
+Pantalla de inicio y primer punto de contacto del usuario.
 
-**Contenido:**
+<br/>
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  NuevaMente  ● Sistema activo          [Nueva Adaptación]   │
-├──────────┬──────────┬────────────┬───────────────────────── │
-│  12      │  38      │  5         │  91%                     │
-│  Docs    │  Adapts  │  Formatos  │  Score Critic            │
-├──────────────────────────────────┬──────────────────────────┤
-│  Adaptaciones recientes          │  Inicio rápido           │
-│  ┌──────────────────────────┐    │  [Crear adaptación]      │
-│  │ AdaptationCard           │    │  [Ver historial]         │
-│  └──────────────────────────┘    ├──────────────────────────┤
-│  ┌──────────────────────────┐    │  Demos del proyecto      │
-│  │ AdaptationCard           │    │  Demo 1 · Demo 2 · Demo 3│
-│  └──────────────────────────┘    │                          │
-└──────────────────────────────────┴──────────────────────────┘
-```
+<table>
+<thead>
+<tr><th>Sección</th><th>Contenido</th><th>Datos</th></tr>
+</thead>
+<tbody>
+<tr><td>Hero</td><td>Título del sistema + botón "Nueva Adaptación"</td><td>—</td></tr>
+<tr><td>Stats</td><td>4 tarjetas: docs cargados, adaptaciones, formatos, score Critic</td><td><code>MOCK_STATS</code></td></tr>
+<tr><td>Recientes</td><td>Últimas 3 adaptaciones con <code>AdaptationCard</code></td><td><code>MOCK_RECENT_ADAPTATIONS</code></td></tr>
+<tr><td>Inicio rápido</td><td>Accesos directos a crear y ver historial</td><td>—</td></tr>
+<tr><td>Demos</td><td>Los 3 casos de demo del proyecto</td><td><code>DEMO_CASES</code></td></tr>
+</tbody>
+</table>
 
-**Sub-componentes internos:** `StatCard`, `DemoCase`
+<br/>
 
-**Datos:** `MOCK_STATS`, `MOCK_RECENT_ADAPTATIONS`, `DEMO_CASES` — todos reemplazables por API.
+**Sub-componentes:** `StatCard` · `DemoCase`
 
 ---
 
@@ -250,43 +321,54 @@ Pantalla de inicio. Primer punto de contacto del usuario con el sistema.
 
 Flujo de creación en dos pasos secuenciales.
 
-**Paso 1 — Cargar documento**
+<br/>
 
-- Usa el widget `DocumentUploader`
-- El usuario arrastra o selecciona un archivo (PDF, MD, TXT)
-- Se valida localmente y se sube al backend
-- Al completar, se habilita el paso 2
+<table>
+<thead>
+<tr><th>Paso</th><th>Widget usado</th><th>Descripción</th></tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1 — Cargar documento</strong></td>
+<td><code>DocumentUploader</code></td>
+<td>Arrastrá o seleccioná un archivo. Se valida localmente y se sube al backend. Habilita el paso 2 al completar.</td>
+</tr>
+<tr>
+<td><strong>2 — Configurar</strong></td>
+<td><code>AdaptationForm</code></td>
+<td>Selección de perfil, formato, nicho y nivel de detalle. Al confirmar navega a <code>/result/:id</code>.</td>
+</tr>
+</tbody>
+</table>
 
-**Paso 2 — Configurar adaptación**
+<br/>
 
-- Usa el widget `AdaptationForm`
-- El usuario elige perfil, formato, nicho y nivel de detalle
-- Al confirmar navega a `/result/:id` con el objeto `adaptation` en el state de React Router
-
-**Hooks internos:**
-
-```
-useDocumentUpload()   maneja el estado de upload (uploading, uploadedDoc, uploadError)
-handleGenerate()      construye el payload y navega al resultado
-```
+**Hooks internos:** `useDocumentUpload()` · `handleGenerate()`
 
 ---
 
 ### `ResultPage` — `/result/:id`
 
-Muestra el resultado de una adaptación. Se comporta distinto según el estado.
+Muestra el resultado. Se comporta distinto según el estado de la adaptación.
 
-| Estado | Qué muestra |
-|---|---|
-| `pending` · `processing` | Widget `GenerationStatus` con el pipeline animado agente por agente |
-| `completed` | Widget `ContentViewer` con el contenido generado |
-| `failed` | Banner de error con botón para reintentar |
+<br/>
 
-**Hook interno `usePipelineSimulation`:**
+<table>
+<thead>
+<tr><th>Estado</th><th>Qué muestra</th></tr>
+</thead>
+<tbody>
+<tr><td><code>pending</code> · <code>processing</code></td><td>Widget <code>GenerationStatus</code> con el pipeline animado agente por agente</td></tr>
+<tr><td><code>completed</code></td><td>Widget <code>ContentViewer</code> con el contenido generado + evaluación del Critic</td></tr>
+<tr><td><code>failed</code></td><td>Banner de error con botón para reintentar</td></tr>
+</tbody>
+</table>
 
-Avanza un agente cada 1.8s usando `setInterval`. Al completar los 5 agentes inyecta los datos mock de resultado. Esto es simulación visual — reemplazar con polling a `adaptationsApi.getStatus(id)`.
+<br/>
 
-**Sub-componentes internos:** `PageHeader`, `AdaptationMeta`
+**Hook interno:** `usePipelineSimulation()` — avanza un agente cada 1.8s. Reemplazar con polling a `adaptationsApi.getStatus(id)`.
+
+**Sub-componentes:** `PageHeader` · `AdaptationMeta`
 
 ---
 
@@ -294,53 +376,60 @@ Avanza un agente cada 1.8s usando `setInterval`. Al completar los 5 agentes inye
 
 Lista de todas las adaptaciones con filtros client-side.
 
-**Filtros disponibles:**
+<br/>
 
-| Filtro | Tipo | Opciones |
-|---|---|---|
-| Búsqueda | Texto libre | Título del documento |
-| Perfil | Selector | Principiante · Junior · Lider · Gestor |
-| Formato | Selector | Flashcards · Tutorial · Quiz · Resumen Ejecutivo · Guion |
-| Estado | Selector | completed · processing · pending · failed |
+<table>
+<thead>
+<tr><th>Filtro</th><th>Tipo</th><th>Opciones</th></tr>
+</thead>
+<tbody>
+<tr><td>Búsqueda</td><td>Texto libre</td><td>Título del documento</td></tr>
+<tr><td>Perfil</td><td>Selector</td><td>Principiante · Junior · Lider · Gestor</td></tr>
+<tr><td>Formato</td><td>Selector</td><td>Flashcards · Tutorial · Quiz · Resumen Ejecutivo · Guion</td></tr>
+<tr><td>Estado</td><td>Selector</td><td>completed · processing · pending · failed</td></tr>
+</tbody>
+</table>
 
-Los filtros activos se muestran como badges con botón para limpiar todo.
+<br/>
 
-**Hook interno `useHistoryFilters`:** centraliza los 4 estados de filtro y expone el array `filtered` ya procesado.
+**Hook interno:** `useHistoryFilters()` — centraliza los 4 estados de filtro y expone el array `filtered` ya procesado.
 
 ---
 
-## Capa `widgets`
+## 🧩 Capa `widgets`
 
-Bloques de UI complejos con lógica propia. Cada widget tiene una carpeta y un archivo `.jsx`.
+Bloques de UI complejos con lógica propia. Cada widget tiene una carpeta y un único archivo `.jsx`.
 
----
+<br/>
 
 ### `AdaptationForm`
 
 Wizard de 4 pasos para configurar la adaptación.
 
-```
-  ① Perfil  →  ② Formato  →  ③ Nicho  →  ④ Detalle
-```
+<br/>
 
-| Paso | Opciones |
-|---|---|
-| **Perfil** | Principiante · Junior · Lider · Gestor |
-| **Formato** | Flashcards · Tutorial · Quiz · Resumen Ejecutivo · Guion |
-| **Nicho** | General · Fintech · Salud · E-commerce |
-| **Detalle** | Básico · Intermedio · Didáctico · Detallado |
+<table>
+<thead>
+<tr><th>Paso</th><th>Pregunta</th><th>Opciones</th></tr>
+</thead>
+<tbody>
+<tr><td>① Perfil</td><td>¿Quién recibe el contenido?</td><td>Principiante · Junior · Lider · Gestor</td></tr>
+<tr><td>② Formato</td><td>¿Qué tipo de contenido?</td><td>Flashcards · Tutorial · Quiz · Resumen Ejecutivo · Guion</td></tr>
+<tr><td>③ Nicho</td><td>¿Cuál es el sector?</td><td>General · Fintech · Salud · E-commerce</td></tr>
+<tr><td>④ Detalle</td><td>¿Qué nivel de profundidad?</td><td>Básico · Intermedio · Didáctico · Detallado</td></tr>
+</tbody>
+</table>
 
-- El botón "Siguiente" se habilita solo cuando hay una opción seleccionada
-- El último paso muestra "Generar contenido" y llama a `onSubmit(values)`
-- Cada paso tiene animación `fade-in` al aparecer
-
-**Sub-componentes:** `StepIndicator` · `OptionGrid` · `ProfileStep` · `FormatStep` · `IndustryStep` · `DetailStep`
+<br/>
 
 **Props:**
+
 ```js
 onSubmit(values)   // { profile, format, industry, detailLevel }
 loading            // boolean — spinner en el botón final durante la generación
 ```
+
+**Sub-componentes:** `StepIndicator` · `OptionGrid` · `ProfileStep` · `FormatStep` · `IndustryStep` · `DetailStep`
 
 ---
 
@@ -348,22 +437,26 @@ loading            // boolean — spinner en el botón final durante la generaci
 
 Renderiza el contenido generado según el formato de la adaptación.
 
-| Formato | Qué renderiza |
-|---|---|
-| **Flashcards** | Grid 2 columnas — concepto, pregunta, respuesta y fuente por tarjeta |
-| **Tutorial** | Introducción → pasos numerados con bloques de código → conclusión |
-| **Resumen Ejecutivo** | Resumen → puntos clave con bullets → riesgos en ámbar |
-| **Quiz** | Preguntas con opciones A/B/C/D — respuesta correcta en verde + justificación |
-| **Guion** | JSON formateado (vista provisional hasta definir el schema) |
+<br/>
 
-Siempre incluye:
-- Header con formato, perfil e industria + `ScoreRing` con el score del Critic
-- `EvaluationBreakdown`: los 4 criterios del Critic (fidelidad, alineación, cumplimiento, coherencia)
+<table>
+<thead>
+<tr><th>Formato</th><th>Qué renderiza</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Flashcards</strong></td><td>Grid 2 columnas — concepto, pregunta, respuesta y fuente por tarjeta</td></tr>
+<tr><td><strong>Tutorial</strong></td><td>Introducción → pasos numerados con bloques de código → conclusión</td></tr>
+<tr><td><strong>Resumen Ejecutivo</strong></td><td>Resumen → puntos clave con bullets → riesgos en ámbar</td></tr>
+<tr><td><strong>Quiz</strong></td><td>Preguntas con opciones A/B/C/D — respuesta correcta en verde + justificación</td></tr>
+<tr><td><strong>Guion</strong></td><td>JSON formateado (vista provisional hasta definir el schema)</td></tr>
+</tbody>
+</table>
 
-**Props:**
-```js
-adaptation   // objeto Adaptation completo — debe tener status === 'completed' y content definido
-```
+<br/>
+
+Siempre incluye el `ScoreRing` con el score del Critic y el desglose de los 4 criterios de evaluación.
+
+**Sub-componentes:** `FlashcardsView` · `TutorialView` · `ExecutiveSummaryView` · `QuizView` · `GuionView` · `EvaluationBreakdown`
 
 ---
 
@@ -371,24 +464,28 @@ adaptation   // objeto Adaptation completo — debe tener status === 'completed'
 
 Zona de carga con drag-and-drop. Valida localmente antes de llamar al backend.
 
-**Validaciones:**
-- Extensión permitida: `.pdf` · `.md` · `.txt`
-- Tamaño máximo: 20 MB
+<br/>
 
-**Estados visuales:**
+<table>
+<thead>
+<tr><th>Estado</th><th>Borde</th><th>Mensaje</th></tr>
+</thead>
+<tbody>
+<tr><td>Idle</td><td>Punteado gris</td><td>"Arrastrá o hacé clic para subir"</td></tr>
+<tr><td>Dragging</td><td>Punteado brand</td><td>"Suelta el archivo aquí"</td></tr>
+<tr><td>Success</td><td>Verde</td><td>"¡Archivo cargado correctamente!"</td></tr>
+<tr><td>Error</td><td>Rojo</td><td>Mensaje de error específico</td></tr>
+</tbody>
+</table>
 
-| Estado | Borde | Texto |
-|---|---|---|
-| Idle | Punteado gris | "Arrastrá o hacé clic para subir" |
-| Dragging | Punteado brand azul | "Suelta el archivo aquí" |
-| Success | Verde | "¡Archivo cargado correctamente!" |
-| Error | Rojo | Mensaje de error específico |
+<br/>
 
-**Sub-componentes:** `DropZoneIcon` · `DropZoneLabel` · `SelectedFileRow`
+**Validaciones locales:** extensión (`.pdf` · `.md` · `.txt`) y tamaño (≤ 20 MB)
 
 **Props:**
+
 ```js
-onFileSelect(file)  // se llama cuando el archivo pasa validación local
+onFileSelect(file)  // llamado cuando el archivo pasa validación local
 uploading           // boolean — deshabilita la zona y muestra spinner
 error               // string — error externo del backend
 success             // boolean — marca la zona como exitosa
@@ -400,58 +497,64 @@ success             // boolean — marca la zona como exitosa
 
 Visualiza el pipeline de 5 agentes en tiempo real.
 
-```
-  ① Orchestrator Agent      Analiza la solicitud y define la ruta
-  ② RAG Researcher Agent    Recupera fragmentos relevantes del documento
-  ③ Context/Profile Agent   Adapta al perfil con instrucciones pedagógicas
-  ④ Educational Generator   Genera el contenido educativo estructurado
-  ⑤ Critic Agent            Evalúa calidad, fidelidad y coherencia
-```
+<br/>
 
-| Estado del paso | Ícono | Estilo |
-|---|---|---|
-| `done` | ✅ verde | Opacidad reducida |
-| `active` | ⏳ spinner brand | Fondo brand resaltado |
-| `idle` | ○ gris | Muy transparente |
-| `error` | ⚠️ rojo | Fondo rojo tenue |
+<table>
+<thead>
+<tr><th>#</th><th>Agente</th><th>Responsabilidad</th></tr>
+</thead>
+<tbody>
+<tr><td>①</td><td><strong>Orchestrator Agent</strong></td><td>Analiza la solicitud y define la ruta</td></tr>
+<tr><td>②</td><td><strong>RAG Researcher Agent</strong></td><td>Recupera fragmentos relevantes del documento</td></tr>
+<tr><td>③</td><td><strong>Context/Profile Agent</strong></td><td>Adapta al perfil con instrucciones pedagógicas</td></tr>
+<tr><td>④</td><td><strong>Educational Generator</strong></td><td>Genera el contenido educativo estructurado</td></tr>
+<tr><td>⑤</td><td><strong>Critic Agent</strong></td><td>Evalúa calidad, fidelidad y coherencia</td></tr>
+</tbody>
+</table>
 
-Si el Critic rechaza el contenido y hay regeneración en curso, muestra el contador "Iteración N/M".
+<br/>
 
-**Sub-componentes:** `AgentStep`
+<table>
+<thead>
+<tr><th>Estado del paso</th><th>Ícono</th><th>Estilo visual</th></tr>
+</thead>
+<tbody>
+<tr><td><code>done</code></td><td>✅ verde</td><td>Opacidad reducida</td></tr>
+<tr><td><code>active</code></td><td>⏳ spinner brand</td><td>Fondo brand resaltado</td></tr>
+<tr><td><code>idle</code></td><td>○ gris</td><td>Muy transparente</td></tr>
+<tr><td><code>error</code></td><td>⚠️ rojo</td><td>Fondo rojo tenue</td></tr>
+</tbody>
+</table>
+
+<br/>
 
 **Props:**
+
 ```js
 status          // 'pending' | 'processing' | 'completed' | 'failed'
-currentAgent    // id del agente activo: 'orchestrator' | 'researcher' | 'context' | 'generator' | 'critic'
+currentAgent    // 'orchestrator' | 'researcher' | 'context' | 'generator' | 'critic'
 iteration       // número de iteración del Critic (default: 0)
 maxIterations   // límite de iteraciones (default: 3)
 ```
 
 ---
 
-## Capa `entities`
+## 🗂️ Capa `entities`
 
-Representaciones visuales de los objetos del dominio. Son más simples que los widgets — solo muestran datos, no tienen lógica de negocio.
+Representaciones visuales de los objetos del dominio. Solo muestran datos, sin lógica de negocio.
 
----
+<br/>
 
 ### `AdaptationCard`
 
 Tarjeta compacta de una adaptación. Se usa en el dashboard y en el historial.
 
-```
-┌──────────────────────────────────────────────────────┐
-│  Introducción a la Arquitectura de Redes VCN en OCI  │
-│  [Principiante]  [Flashcards]  [General]             │
-├──────────────────────────────────────────────────────┤
-│  15 sep 2026, 10:00                      Score 92%   │
-│                                     ● Completado     │
-└──────────────────────────────────────────────────────┘
-```
+**Muestra:** título del documento · badges de perfil/formato/industria · estado con color semántico · fecha · score del Critic
 
-Es un elemento accesible: tiene `role="button"`, `tabIndex={0}`, soporte de teclado (`Enter`) y `focus ring`.
+**Accesibilidad:** `role="button"` · `tabIndex` · soporte de teclado (`Enter`) · `focus ring`
 
 **Props:**
+
 ```js
 adaptation    // objeto Adaptation
 onClick()     // función opcional — si se pasa, la tarjeta es clickeable
@@ -461,18 +564,12 @@ onClick()     // función opcional — si se pasa, la tarjeta es clickeable
 
 ### `DocumentCard`
 
-Tarjeta compacta de un documento cargado. También exporta `DocumentTypeIcon` para uso independiente.
+Tarjeta compacta de un documento. También exporta `DocumentTypeIcon` para uso independiente.
 
-```
-┌──────────────────────────────────────────────────────┐
-│  📄  Guía de PostgreSQL para aplicaciones FastAPI    │
-│      [PDF]  2.4 MB  ·  14 sep 2026, 09:00           │
-└──────────────────────────────────────────────────────┘
-```
-
-El ícono cambia según el tipo: 📄 rojo para PDF · `</>` azul para Markdown · 📃 gris para TXT.
+**Muestra:** ícono por tipo (📄 PDF · `</>` MD · 📃 TXT) · título · badge del tipo · tamaño · fecha
 
 **Props:**
+
 ```js
 document        // objeto Document
 onSelect(doc)   // función opcional — habilita modo selección
@@ -481,121 +578,86 @@ selected        // boolean — muestra checkmark brand
 
 ---
 
-## Capa `shared`
+## 📦 Capa `shared`
 
-Código reutilizable sin lógica de negocio del dominio. Puede ser importado desde cualquier capa.
+Código reutilizable sin lógica de negocio. Importable desde cualquier capa.
 
----
+<br/>
 
 ### `shared/ui/` — Sistema de diseño
 
-#### `Button`
-
-```jsx
-<Button variant="primary" size="md" loading={false} leftIcon={<Icon />}>
-  Generar contenido
-</Button>
-```
-
-| Prop | Valores | Default |
-|---|---|---|
-| `variant` | `primary` · `secondary` · `ghost` · `danger` · `success` | `primary` |
-| `size` | `sm` · `md` · `lg` | `md` |
-| `loading` | `boolean` | `false` |
-| `fullWidth` | `boolean` | `false` |
-| `leftIcon` / `rightIcon` | `ReactNode` | — |
-
-Con `loading=true` reemplaza el contenido por un spinner y deshabilita el botón automáticamente.
-
-#### `Card` y `CardHeader`
-
-```jsx
-<Card glass hover>
-  <CardHeader
-    title="Adaptaciones recientes"
-    action={<Link to="/history">Ver todas →</Link>}
-  />
-  {/* contenido */}
-</Card>
-```
-
-`Card` es un contenedor surface. `glass=true` (default) aplica glassmorphism con `backdrop-blur`. `CardHeader` es una fila independiente con título y acción — no envuelve en Card, se compone.
-
-#### `Badge`
-
-```jsx
-<Badge variant="success" size="sm" dot>Completado</Badge>
-```
-
-| Variante | Color |
-|---|---|
-| `default` | Gris neutro |
-| `brand` | Índigo |
-| `success` | Esmeralda |
-| `warning` | Ámbar |
-| `danger` | Rojo |
-| `info` | Azul |
-| `violet` | Violeta |
-
-La prop `dot` agrega un círculo de color como indicador visual antes del texto.
-
-#### `Alert`
-
-```jsx
-<Alert variant="error" title="Título opcional">
-  Descripción del problema.
-</Alert>
-```
-
-Variantes: `success` · `error` · `warning` · `info`. Incluye `role="alert"` para lectores de pantalla.
-
-#### `EmptyState` (exportado desde `Alert.jsx`)
-
-```jsx
-<EmptyState
-  icon={History}
-  title="No hay adaptaciones"
-  description="Probá ajustando los filtros."
-  action={<Button>Nueva adaptación</Button>}
-/>
-```
-
-#### `ScoreRing` (exportado desde `Alert.jsx`)
-
-```jsx
-<ScoreRing score={0.92} size={64} />
-```
-
-SVG circular que muestra un porcentaje. Color automático: verde ≥ 80% · ámbar ≥ 60% · rojo < 60%.
-
-#### `Input` y `Select`
-
-```jsx
-<Input
-  label="Buscar"
-  hint="Texto de ayuda"
-  error="Campo requerido"
-  leftIcon={<Search />}
-/>
-
-<Select label="Perfil">
-  <option value="Junior">Junior</option>
-</Select>
-```
-
-El `id` del campo se deriva del `label` automáticamente. Incluyen `aria-invalid` y `aria-describedby`.
-
-#### `Spinner` · `PageLoader` · `Skeleton`
-
-```jsx
-<Spinner size="md" />
-<PageLoader message="Generando contenido..." />
-<Skeleton className="h-4 w-32" />
-```
-
-#### `Sidebar`
-
-Barra lateral fija de 256px. Lee la ruta activa con `NavLink` y aplica estilos automáticamente. Los ítems de navegación están en la constante `NAV_ITEMS` dentro del mismo archivo.
+<table>
+<thead>
+<tr><th>Componente</th><th>Variantes / Props clave</th><th>Descripción</th></tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Button</code></td>
+<td><code>primary · secondary · ghost · danger · success</code><br/><code>sm · md · lg</code> · <code>loading</code></td>
+<td>Con <code>loading=true</code> muestra spinner y deshabilita automáticamente</td>
+</tr>
+<tr>
+<td><code>Card</code></td>
+<td><code>glass</code> · <code>hover</code></td>
+<td>Contenedor surface con glassmorphism y efecto hover opcional</td>
+</tr>
+<tr>
+<td><code>CardHeader</code></td>
+<td><code>title</code> · <code>action</code></td>
+<td>Fila con título izquierda y acción derecha — se compone con Card</td>
+</tr>
+<tr>
+<td><code>Badge</code></td>
+<td><code>default · brand · success · warning · danger · info · violet</code><br/><code>sm · md · lg</code> · <code>dot</code></td>
+<td>Etiqueta pill-shaped con punto de color opcional</td>
+</tr>
+<tr>
+<td><code>Alert</code></td>
+<td><code>success · error · warning · info</code></td>
+<td>Banner con <code>role="alert"</code> para lectores de pantalla</td>
+</tr>
+<tr>
+<td><code>EmptyState</code></td>
+<td><code>icon · title · description · action</code></td>
+<td>Estado vacío de listas con slot de acción</td>
+</tr>
+<tr>
+<td><code>ScoreRing</code></td>
+<td><code>score (0–1)</code> · <code>size</code></td>
+<td>SVG circular de progreso. Verde ≥80% · Ámbar ≥60% · Rojo &lt;60%</td>
+</tr>
+<tr>
+<td><code>Input</code></td>
+<td><code>label · hint · error · leftIcon · rightIcon</code></td>
+<td>Campo con <code>aria-invalid</code> y <code>aria-describedby</code></td>
+</tr>
+<tr>
+<td><code>Select</code></td>
+<td>Misma API que <code>Input</code></td>
+<td>Renderiza <code>&lt;select&gt;</code> con el mismo sistema de label/error</td>
+</tr>
+<tr>
+<td><code>Spinner</code></td>
+<td><code>sm · md · lg</code></td>
+<td>Spinner animado con <code>role="status"</code></td>
+</tr>
+<tr>
+<td><code>PageLoader</code></td>
+<td><code>message</code></td>
+<td>Spinner centrado para estados de carga de página completa</td>
+</tr>
+<tr>
+<td><code>Skeleton</code></td>
+<td><code>className</code> (w/h via Tailwind)</td>
+<td>Placeholder animado con pulse para contenido cargando</td>
+</tr>
+<tr>
+<td><code>Sidebar</code></td>
+<td>Sin props</td>
+<td>Barra fija 256px. Lee ruta activa con <code>NavLink</code> automáticamente</td>
+</tr>
+</tbody>
+</table>
 
 ---
 
@@ -603,236 +665,268 @@ Barra lateral fija de 256px. Lee la ruta activa con `NavLink` y aplica estilos a
 
 Cliente HTTP centralizado basado en Axios.
 
-**Configuración:**
-- Base URL: `VITE_API_URL` (fallback: `http://localhost:8000`)
-- Timeout: 60 segundos
-- Interceptor de request: inyecta el token JWT desde `localStorage`
-- Interceptor de response: extrae `response.data` en éxito · normaliza errores de FastAPI a `Error`
+**Interceptores:**
+- **Request** → inyecta el token JWT desde `localStorage`
+- **Response** → extrae `response.data` en éxito · normaliza errores de FastAPI a `Error(message)`
 
-**Métodos:**
+<br/>
 
-```js
-// Documentos
-documentsApi.upload(file)       POST   /api/v1/documents          multipart/form-data
-documentsApi.list()             GET    /api/v1/documents
-documentsApi.get(id)            GET    /api/v1/documents/:id
-documentsApi.delete(id)         DELETE /api/v1/documents/:id
-
-// Adaptaciones
-adaptationsApi.create(payload)  POST   /api/v1/adaptations
-adaptationsApi.list(params)     GET    /api/v1/adaptations         acepta filtros
-adaptationsApi.get(id)          GET    /api/v1/adaptations/:id
-adaptationsApi.getStatus(id)    GET    /api/v1/adaptations/:id/status   para polling
-
-// Sistema
-healthApi.check()               GET    /health
-```
+<table>
+<thead>
+<tr><th>Método</th><th>HTTP</th><th>Endpoint</th><th>Descripción</th></tr>
+</thead>
+<tbody>
+<tr><td><code>documentsApi.upload(file)</code></td><td>POST</td><td><code>/api/v1/documents</code></td><td>Sube archivo (multipart)</td></tr>
+<tr><td><code>documentsApi.list()</code></td><td>GET</td><td><code>/api/v1/documents</code></td><td>Lista todos los documentos</td></tr>
+<tr><td><code>documentsApi.get(id)</code></td><td>GET</td><td><code>/api/v1/documents/:id</code></td><td>Obtiene un documento</td></tr>
+<tr><td><code>documentsApi.delete(id)</code></td><td>DELETE</td><td><code>/api/v1/documents/:id</code></td><td>Elimina un documento</td></tr>
+<tr><td><code>adaptationsApi.create(payload)</code></td><td>POST</td><td><code>/api/v1/adaptations</code></td><td>Inicia la generación</td></tr>
+<tr><td><code>adaptationsApi.list(params)</code></td><td>GET</td><td><code>/api/v1/adaptations</code></td><td>Lista con filtros opcionales</td></tr>
+<tr><td><code>adaptationsApi.get(id)</code></td><td>GET</td><td><code>/api/v1/adaptations/:id</code></td><td>Obtiene resultado completo</td></tr>
+<tr><td><code>adaptationsApi.getStatus(id)</code></td><td>GET</td><td><code>/api/v1/adaptations/:id/status</code></td><td>Solo estado — para polling</td></tr>
+<tr><td><code>healthApi.check()</code></td><td>GET</td><td><code>/health</code></td><td>Verifica disponibilidad</td></tr>
+</tbody>
+</table>
 
 ---
 
 ### `shared/hooks/`
 
-#### `useApi(apiFn)`
-
-Wrapper genérico para llamadas async. Elimina el boilerplate de loading/error.
-
-```js
-const { data, loading, error, execute } = useApi(adaptationsApi.list)
-
-// Ejecutar:
-await execute({ profile: 'Junior', format: 'Tutorial' })
-// data    → resultado si tuvo éxito
-// loading → true mientras espera
-// error   → mensaje si falló
-```
-
-#### `useLocalStorage(key, initialValue)`
-
-Igual que `useState` pero persiste el valor en `localStorage` via JSON.
+<table>
+<thead>
+<tr><th>Hook</th><th>Descripción</th></tr>
+</thead>
+<tbody>
+<tr>
+<td><code>useApi(apiFn)</code></td>
+<td>Wrapper genérico que expone <code>{ data, loading, error, execute }</code> para cualquier función async</td>
+</tr>
+<tr>
+<td><code>useLocalStorage(key, initialValue)</code></td>
+<td>Igual que <code>useState</code> pero persiste el valor en <code>localStorage</code> via JSON</td>
+</tr>
+</tbody>
+</table>
 
 ---
 
 ### `shared/types/index.js`
 
-**Tipos JSDoc del dominio** para autocompletado:
+Tipos JSDoc del dominio para autocompletado + constantes de opciones para formularios.
 
-```js
-/**
- * @typedef {Object} Adaptation
- * @property {number}  id
- * @property {string}  documentTitle
- * @property {Profile} profile
- * @property {ContentFormat} format
- * @property {AdaptationStatus} status
- * @property {Object} [content]
- * @property {QualityEvaluation} [evaluation]
- */
-```
+<br/>
 
-**Constantes de opciones** para formularios y filtros:
-
-```js
-PROFILES       // [{ value, label, description }]         4 perfiles
-FORMATS        // [{ value, label, icon, description }]   5 formatos
-INDUSTRIES     // [{ value, label }]                      4 industrias
-DETAIL_LEVELS  // [{ value, label, description }]         4 niveles
-```
+<table>
+<thead>
+<tr><th>Constante</th><th>Contenido</th></tr>
+</thead>
+<tbody>
+<tr><td><code>PROFILES</code></td><td>4 perfiles con <code>value</code>, <code>label</code> y <code>description</code></td></tr>
+<tr><td><code>FORMATS</code></td><td>5 formatos con <code>value</code>, <code>label</code>, <code>icon</code> (emoji) y <code>description</code></td></tr>
+<tr><td><code>INDUSTRIES</code></td><td>4 industrias con <code>value</code> y <code>label</code></td></tr>
+<tr><td><code>DETAIL_LEVELS</code></td><td>4 niveles con <code>value</code>, <code>label</code> y <code>description</code></td></tr>
+</tbody>
+</table>
 
 ---
 
 ### `shared/utils/index.js`
 
-| Función | Descripción | Ejemplo de salida |
-|---|---|---|
-| `cn(...classes)` | Merge seguro de clases Tailwind | `"px-4 bg-brand-600"` |
-| `formatDate(date)` | Fecha legible en español | `"15 sep 2026, 10:00"` |
-| `formatFileSize(bytes)` | Tamaño legible | `"2.4 MB"` |
-| `getProfileColor(profile)` | Clases de color por perfil | `"text-emerald-400 bg-emerald-400/10"` |
-| `getFormatColor(format)` | Clases de color por formato | `"text-cyan-400 bg-cyan-400/10"` |
-| `truncate(text, max)` | Corta texto con `…` | `"Introducción a la Arq…"` |
+<table>
+<thead>
+<tr><th>Función</th><th>Descripción</th><th>Ejemplo</th></tr>
+</thead>
+<tbody>
+<tr><td><code>cn(...classes)</code></td><td>Merge seguro de clases Tailwind via clsx + tailwind-merge</td><td><code>cn('px-4', active && 'bg-brand-600')</code></td></tr>
+<tr><td><code>formatDate(date)</code></td><td>Fecha legible en español</td><td><code>"15 sep 2026, 10:00"</code></td></tr>
+<tr><td><code>formatFileSize(bytes)</code></td><td>Tamaño legible</td><td><code>"2.4 MB"</code></td></tr>
+<tr><td><code>getProfileColor(profile)</code></td><td>Clases Tailwind de color por perfil</td><td><code>"text-emerald-400 bg-emerald-400/10"</code></td></tr>
+<tr><td><code>getFormatColor(format)</code></td><td>Clases Tailwind de color por formato</td><td><code>"text-cyan-400 bg-cyan-400/10"</code></td></tr>
+<tr><td><code>truncate(text, max)</code></td><td>Corta texto con <code>…</code> al superar el límite</td><td><code>truncate("Texto largo...", 50)</code></td></tr>
+</tbody>
+</table>
 
 ---
 
-## Flujo de usuario
+## 🔄 Flujo de usuario
 
 ```
   Abre la app
        │
        ▼
-  ┌─────────────────────────────┐
-  │         Dashboard  /        │
-  │  Stats · Recientes · Demos  │
-  └─────────────────────────────┘
-       │
-       │  Clic "Nueva Adaptación"
+  ┌─────────────────────────────────┐
+  │         Dashboard  /            │
+  │  Stats · Recientes · Demos      │
+  └─────────────────────────────────┘
+       │  clic "Nueva Adaptación"
        ▼
-  ┌─────────────────────────────┐
-  │     Nueva Adaptación  /new  │
-  │                             │
-  │  Paso 1: Sube el documento  │
-  │  Paso 2: Elige parámetros   │
-  │          Perfil → Formato   │
-  │          Nicho  → Detalle   │
-  └─────────────────────────────┘
-       │
-       │  Clic "Generar contenido"
+  ┌─────────────────────────────────┐
+  │     Nueva Adaptación  /new      │
+  │  ① Sube el documento            │
+  │  ② Configura: Perfil → Formato  │
+  │              Nicho  → Detalle   │
+  │  ③ "Generar contenido"          │
+  └─────────────────────────────────┘
+       │  navega con adaptation en state
        ▼
-  ┌─────────────────────────────┐
-  │     Resultado  /result/:id  │
-  │                             │
-  │  Pipeline animado en vivo   │
-  │  Orchestrator → Researcher  │
-  │  → Context → Generator      │
-  │  → Critic (con score)       │
-  │            ↓                │
-  │    Contenido generado       │
-  └─────────────────────────────┘
-       │
-       │  Sidebar → Historial
+  ┌─────────────────────────────────┐
+  │    Resultado  /result/:id       │
+  │  Pipeline animado agente a      │
+  │  agente → resultado generado    │
+  │  con score del Critic Agent     │
+  └─────────────────────────────────┘
+       │  sidebar → Historial
        ▼
-  ┌─────────────────────────────┐
-  │      Historial  /history    │
-  │  Filtros · Grid de cards    │
-  │  Clic en card → /result/:id │
-  └─────────────────────────────┘
+  ┌─────────────────────────────────┐
+  │     Historial  /history         │
+  │  Filtros · Grid de cards        │
+  │  Clic en card → /result/:id     │
+  └─────────────────────────────────┘
 ```
 
 ---
 
-## Conexión con el backend
+## 🔌 Conexión con el backend
 
-El frontend funciona completamente con datos mock. Cuando el backend esté disponible, hay **5 puntos específicos** donde conectar la API real, todos marcados con `// TODO:` en el código:
+El frontend funciona con datos mock. Cuando el backend esté disponible hay **5 puntos específicos** para conectar la API real. Todos están marcados con `// TODO:` en el código.
 
-| Archivo | Mock actual | API real |
-|---|---|---|
-| `NewAdaptationPage.jsx` | `setTimeout` 1.2s | `documentsApi.upload(file)` |
-| `NewAdaptationPage.jsx` | `setTimeout` 1.5s | `adaptationsApi.create(payload)` |
-| `ResultPage.jsx` | `setInterval` 1.8s por agente | polling a `adaptationsApi.getStatus(id)` |
-| `DashboardPage.jsx` | Arrays hardcodeados | `adaptationsApi.list()` + endpoint de stats |
-| `HistoryPage.jsx` | Array hardcodeado | `adaptationsApi.list(params)` |
+<br/>
 
----
-
-## Convenciones de código
-
-### Exports
-
-- Siempre named exports: `export function NombreComponente()` — nunca `export default`
-- Las constantes de módulo van en UPPER_CASE: `const AGENT_STEPS = [...]`
-
-### Componentes
-
-- JSX complejo → extraer sub-componentes con nombres descriptivos
-- Un archivo = un componente principal exportado + sus sub-componentes internos sin exportar
-- JSDoc en todos los componentes exportados
-
-### Lógica
-
-- Las funciones de validación y derivación van fuera del componente como funciones puras
-- Los hooks custom se extraen cuando la lógica tiene más de ~10 líneas: `useDocumentUpload`, `useHistoryFilters`, `usePipelineSimulation`
-- Los lookup maps reemplazan los `if/else` o ternarios encadenados: `const VARIANT_CLASSES = {}`
-
-### Tailwind
-
-- Siempre usar `cn()` para combinar clases — nunca template literals
-- Clases condicionales dentro de `cn()`: `cn('base', condition && 'extra')`
-
-### Accesibilidad
-
-- Elementos `div` clickeables: `role="button"` · `tabIndex={0}` · `onKeyDown` con `Enter`
-- Inputs: `aria-invalid` · `aria-describedby` apuntando al mensaje de error
-- Íconos decorativos: `aria-hidden="true"`
-- Spinners: `role="status"` · `aria-label`
-- Progress bars: `role="progressbar"` · `aria-valuenow`
+<table>
+<thead>
+<tr><th>Archivo</th><th>Mock actual</th><th>API real</th></tr>
+</thead>
+<tbody>
+<tr>
+<td><code>NewAdaptationPage.jsx</code></td>
+<td><code>setTimeout</code> 1.2s</td>
+<td><code>documentsApi.upload(file)</code></td>
+</tr>
+<tr>
+<td><code>NewAdaptationPage.jsx</code></td>
+<td><code>setTimeout</code> 1.5s</td>
+<td><code>adaptationsApi.create(payload)</code></td>
+</tr>
+<tr>
+<td><code>ResultPage.jsx</code></td>
+<td><code>setInterval</code> 1.8s por agente</td>
+<td>Polling a <code>adaptationsApi.getStatus(id)</code></td>
+</tr>
+<tr>
+<td><code>DashboardPage.jsx</code></td>
+<td>Arrays hardcodeados</td>
+<td><code>adaptationsApi.list()</code> + endpoint de stats</td>
+</tr>
+<tr>
+<td><code>HistoryPage.jsx</code></td>
+<td>Array hardcodeado</td>
+<td><code>adaptationsApi.list(params)</code></td>
+</tr>
+</tbody>
+</table>
 
 ---
 
-## Diseño y estilos
+## 📐 Convenciones de código
 
-### Tema
+<table>
+<thead>
+<tr><th>Área</th><th>Regla</th></tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Exports</strong></td>
+<td>Siempre named exports: <code>export function Componente()</code> — nunca <code>export default</code></td>
+</tr>
+<tr>
+<td><strong>Constantes</strong></td>
+<td>UPPER_CASE al nivel del módulo: <code>const AGENT_STEPS = [...]</code></td>
+</tr>
+<tr>
+<td><strong>Sub-componentes</strong></td>
+<td>JSX complejo → extraer sub-componentes con nombres descriptivos dentro del mismo archivo</td>
+</tr>
+<tr>
+<td><strong>Hooks custom</strong></td>
+<td>Extraer cuando la lógica supera ~10 líneas: <code>useDocumentUpload</code>, <code>useHistoryFilters</code></td>
+</tr>
+<tr>
+<td><strong>Lookup maps</strong></td>
+<td>Reemplazar <code>if/else</code> o ternarios encadenados: <code>const VARIANT_CLASSES = {}</code></td>
+</tr>
+<tr>
+<td><strong>Tailwind</strong></td>
+<td>Siempre <code>cn()</code> para combinar clases — nunca template literals</td>
+</tr>
+<tr>
+<td><strong>Accesibilidad</strong></td>
+<td><code>div</code> clickeables: <code>role="button"</code> · <code>tabIndex</code> · <code>onKeyDown</code> con Enter</td>
+</tr>
+<tr>
+<td><strong>JSDoc</strong></td>
+<td>En todos los componentes exportados con sus props documentadas</td>
+</tr>
+</tbody>
+</table>
 
-La aplicación usa **tema oscuro** como base. El fondo raíz es `slate-950` y todas las superficies escalan hacia colores más claros de la escala `slate`.
+---
 
-### Paleta de color
+## 🎨 Diseño y estilos
 
-| Token | Valor | Uso |
-|---|---|---|
-| `brand-400 / 500 / 600` | Índigo | Acciones primarias, estados activos, navegación |
-| `accent-400 / 500 / 600` | Violeta | Gradientes, badges de formato |
-| `slate-950` | `#020617` | Fondo base de la app |
-| `slate-900` | `#0f172a` | Sidebar y fondos secundarios |
-| `slate-800` | `#1e293b` | Cards, inputs, contenedores |
-| `slate-700` | `#334155` | Bordes y separadores |
-| `slate-600` | `#475569` | Bordes en hover |
-| `slate-400 / 300` | — | Texto secundario y etiquetas |
-| `slate-50 / 100` | — | Texto principal |
+La aplicación usa **tema oscuro** como base. Toda la paleta está definida en `tailwind.config.js`.
 
-### Semántica de color para estados
+<br/>
 
-| Color | Estado |
-|---|---|
-| `emerald` | Éxito · completado · aprobado |
-| `amber` | Advertencia · pendiente · iteraciones del Critic |
-| `red` | Error · fallido · peligro |
-| `blue` | Información · procesando |
-| `violet` | Formato del contenido |
+### Colores principales
 
-### Tipografía
+<table>
+<thead>
+<tr><th>Token</th><th>Valor</th><th>Uso</th></tr>
+</thead>
+<tbody>
+<tr><td><code>brand-400/500/600</code></td><td>Índigo</td><td>Botones primarios, navegación activa, estados activos</td></tr>
+<tr><td><code>accent-400/500/600</code></td><td>Violeta</td><td>Gradientes del logo, badges de formato</td></tr>
+<tr><td><code>slate-950</code></td><td><code>#020617</code></td><td>Fondo base de la app</td></tr>
+<tr><td><code>slate-900</code></td><td><code>#0f172a</code></td><td>Sidebar y fondos secundarios</td></tr>
+<tr><td><code>slate-800</code></td><td><code>#1e293b</code></td><td>Cards, inputs y contenedores</td></tr>
+<tr><td><code>slate-700</code></td><td><code>#334155</code></td><td>Bordes y separadores</td></tr>
+</tbody>
+</table>
 
-Fuente **Inter** cargada desde Google Fonts. Pesos usados: 300, 400, 500, 600, 700, 800.
+### Colores semánticos
 
-### Animaciones
+<table>
+<thead>
+<tr><th>Color</th><th>Estado que representa</th></tr>
+</thead>
+<tbody>
+<tr><td>🟢 <code>emerald</code></td><td>Éxito · completado · aprobado por el Critic</td></tr>
+<tr><td>🟡 <code>amber</code></td><td>Advertencia · pendiente · iteraciones del Critic</td></tr>
+<tr><td>🔴 <code>red</code></td><td>Error · fallido · peligro</td></tr>
+<tr><td>🔵 <code>blue</code></td><td>Información · procesando</td></tr>
+<tr><td>🟣 <code>violet</code></td><td>Formato del contenido generado</td></tr>
+</tbody>
+</table>
 
-| Clase | Descripción |
-|---|---|
-| `animate-fade-in` | Opacidad 0→1 en 0.3s — páginas y contenido al aparecer |
-| `animate-slide-up` | Sube 16px + fade-in en 0.3s |
-| `animate-pulse-slow` | Pulse suave de 3s — indicadores de estado en progreso |
+### Tipografía y animaciones
+
+**Fuente:** Inter (Google Fonts) · Pesos: 300, 400, 500, 600, 700, 800
+
+<table>
+<thead>
+<tr><th>Clase</th><th>Descripción</th></tr>
+</thead>
+<tbody>
+<tr><td><code>animate-fade-in</code></td><td>Opacidad 0→1 en 0.3s — páginas y contenido al aparecer</td></tr>
+<tr><td><code>animate-slide-up</code></td><td>Sube 16px + fade-in en 0.3s</td></tr>
+<tr><td><code>animate-pulse-slow</code></td><td>Pulse suave de 3s — indicadores de estado en progreso</td></tr>
+</tbody>
+</table>
 
 ---
 
 <div align="center">
 
-NuevaMente · Programa ONE · Grupo 10
+*NuevaMente · Programa ONE · Grupo 10*
 
 </div>
