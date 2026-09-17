@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     # Entorno y Logging
     APP_ENV: str = Field(default="development", description="Entorno de ejecución")
     LOG_LEVEL: str = Field(default="INFO", description="Nivel de logging")
+    CORS_ORIGINS: str = Field(default="http://localhost:5173", description="Orígenes CORS separados por comas")
 
     # Proveedores de LLM
     GEMINI_API_KEY: Optional[str] = Field(default=None, description="API Key de Google Gemini")

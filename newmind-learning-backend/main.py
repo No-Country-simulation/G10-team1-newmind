@@ -1,20 +1,19 @@
-"""HTTP entrypoint for the NewMind backend container.
-
-This module intentionally exposes a small backend health/status service without
-serving the React frontend. The frontend lives in `newmind-learning-frontend/`
-and will get its own Docker service.
-"""
+"""FastAPI entrypoint for the NewMind backend."""
 
 from __future__ import annotations
 
-import json
 import logging
 import os
-from http import HTTPStatus
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
-from urllib.parse import urlparse
 
+import uvicorn
+from fastapi import APIRouter, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from api.adaptations import router as adaptations_router
+from api.documents import router as documents_router
+from api.schemas import HealthResponse
+from application.services import AdaptationService, DocumentService
 from config.settings import settings
 from storage.oci_client import oci_storage
 
@@ -34,48 +33,56 @@ def build_health_payload() -> dict[str, Any]:
     }
 
 
-class BackendRequestHandler(BaseHTTPRequestHandler):
-    """Minimal HTTP handler for backend status endpoints."""
+def create_app(
+    document_service: DocumentService | None = None,
+    adaptation_service: AdaptationService | None = None,
+) -> FastAPI:
+    document_service = document_service or DocumentService(storage=oci_storage)
+    adaptation_service = adaptation_service or AdaptationService(document_service)
 
-    def do_GET(self) -> None:
-        path = urlparse(self.path).path
-        if path in {"/", "/health"}:
-            self._write_json(HTTPStatus.OK, build_health_payload())
-            return
+    application = FastAPI(
+        title="NewMind Learning API",
+        version="1.0.0",
+        description="Contract-first API for document ingestion and educational adaptations.",
+    )
+    application.state.document_service = document_service
+    application.state.adaptation_service = adaptation_service
+    origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",") if origin.strip()]
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
-        self._write_json(
-            HTTPStatus.NOT_FOUND,
-            {
-                "status": "not_found",
-                "message": "Use /health to check backend container status.",
-            },
-        )
+    root_router = APIRouter()
 
-    def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
-        logger.info("%s - %s", self.address_string(), format % args)
+    @root_router.get("/", response_model=HealthResponse, include_in_schema=False)
+    @root_router.get("/health", response_model=HealthResponse, tags=["health"])
+    def health() -> dict[str, Any]:
+        return build_health_payload()
 
-    def _write_json(self, status: HTTPStatus, payload: dict[str, Any]) -> None:
-        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-        self.send_response(status.value)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
+    application.include_router(root_router)
+    application.include_router(documents_router, prefix="/api/v1")
+    application.include_router(adaptations_router, prefix="/api/v1")
+    return application
+
+
+app = create_app()
 
 
 def run() -> None:
-    """Start the backend HTTP entrypoint."""
-    host = os.getenv("BACKEND_HOST", "0.0.0.0")
-    port = int(os.getenv("BACKEND_PORT", "8000"))
-
+    """Start the backend on the Docker-compatible host and port."""
     logging.basicConfig(
         level=settings.LOG_LEVEL,
         format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
     )
-
-    server = ThreadingHTTPServer((host, port), BackendRequestHandler)
-    logger.info("Starting backend entrypoint on %s:%s", host, port)
-    server.serve_forever()
+    uvicorn.run(
+        app,
+        host=os.getenv("BACKEND_HOST", "0.0.0.0"),
+        port=int(os.getenv("BACKEND_PORT", "8000")),
+    )
 
 
 if __name__ == "__main__":
