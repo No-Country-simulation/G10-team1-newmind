@@ -1,0 +1,19 @@
+.atl/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local environments and secrets
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+
+# Backend local runtime data
+newmind-learning-backend/data/chroma_db/
+newmind-learning-backend/data/oci_local_storage/

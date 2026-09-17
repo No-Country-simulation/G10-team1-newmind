@@ -1,0 +1,6 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+# Local embeddings profile dependencies.
+# Keep these out of requirements.txt so the base Docker image stays lightweight.
+torch==2.5.1+cpu
+sentence-transformers==3.3.1

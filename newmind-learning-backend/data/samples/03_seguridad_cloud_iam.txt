@@ -1,0 +1,10 @@
+POLÍTICAS DE GOBERNANZA, IDENTIDAD Y ACCESO (IAM) EN ENTORNOS EMPRESARIALES CLOUD
+
+Resumen Ejecutivo:
+El sistema de Gestión de Identidad y Acceso (IAM) es la primera línea de defensa en la nube corporativa. Permite a las organizaciones definir qué usuarios, grupos o servicios automatizados tienen permisos específicos sobre determinados recursos en compartimentos delimitados.
+
+Pilares Clave:
+1. Modelo de Compartimentos: Aislamiento lógico de recursos para separar ambientes de desarrollo, pruebas y producción, facilitando el control de costos y la asignación presupuestaria.
+2. Políticas Basadas en Lenguaje Declarativo: Reglas del tipo 'Allow group SecOps to manage all-resources in tenancy' garantizan trazabilidad y cumplimiento en auditorías SOX e ISO 27001.
+3. Autenticación Multifactor (MFA) Obligatoria: Reduce el riesgo de compromiso de credenciales corporativas en más del 99%.
+4. Auditoría Continua: Registro inmutable de eventos de API en OCI Audit para investigación forense inmediata.
