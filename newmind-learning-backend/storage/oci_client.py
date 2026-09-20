@@ -2,15 +2,66 @@
 Cliente OCI Object Storage para la capa Always Free.
 Soporta autenticación con OCI SDK y modo emulado local de persistencia para pruebas continuas.
 """
-import os
 import json
 import logging
+import os
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 from config.settings import settings
 from models.schemas import AlmacenamientoOCI
 
 logger = logging.getLogger(__name__)
+
+EXPLICIT_ENV_AUTH_FIELDS = [
+    "OCI_USER_OCID",
+    "OCI_FINGERPRINT",
+    "OCI_TENANCY_OCID",
+    "OCI_REGION",
+    "OCI_KEY_FILE",
+    "OCI_OBJECT_STORAGE_NAMESPACE",
+]
+
+
+def _present(value: Any) -> bool:
+    return value is not None and str(value).strip() != ""
+
+
+def build_oci_storage_readiness(
+    *,
+    is_emulated: bool,
+    namespace: str | None,
+) -> dict[str, Any]:
+    """Return secret-safe OCI Object Storage readiness metadata."""
+    config_path = os.path.expanduser(settings.OCI_CONFIG_FILE)
+    config_file_exists = os.path.exists(config_path)
+    missing_explicit_fields = [
+        field for field in EXPLICIT_ENV_AUTH_FIELDS if not _present(getattr(settings, field))
+    ]
+    explicit_env_configured = not missing_explicit_fields
+
+    if config_file_exists:
+        auth_source = "config_file"
+        missing_required_fields = []
+    elif explicit_env_configured:
+        auth_source = "explicit_env"
+        missing_required_fields = []
+    else:
+        auth_source = "local_emulation"
+        missing_required_fields = missing_explicit_fields
+
+    bucket_names = [settings.OCI_BUCKET_DOCS, settings.OCI_BUCKET_OUTPUTS]
+    buckets_configured = all(_present(bucket) for bucket in bucket_names)
+    runtime_mode = "local_emulation" if is_emulated else "oci"
+
+    return {
+        "mode": runtime_mode,
+        "auth_source": auth_source,
+        "real_oci_ready": runtime_mode == "oci" and auth_source != "local_emulation",
+        "local_fallback": runtime_mode == "local_emulation",
+        "missing_required_fields": missing_required_fields,
+        "namespace": namespace if _present(namespace) else None,
+        "buckets": bucket_names if buckets_configured else [],
+    }
 
 class OCIStorageClient:
     def __init__(self):
@@ -64,6 +115,13 @@ class OCIStorageClient:
         (settings.LOCAL_STORAGE_DIR / settings.OCI_BUCKET_DOCS).mkdir(parents=True, exist_ok=True)
         (settings.LOCAL_STORAGE_DIR / settings.OCI_BUCKET_OUTPUTS).mkdir(parents=True, exist_ok=True)
         logger.info(f"OCI Storage operando en modo local emulado en: {settings.LOCAL_STORAGE_DIR}")
+
+    def readiness(self) -> dict[str, Any]:
+        """Return secret-safe runtime readiness for health checks."""
+        return build_oci_storage_readiness(
+            is_emulated=self.is_emulated,
+            namespace=self.namespace,
+        )
 
     def upload_raw_document(self, filename: str, content: bytes, content_type: str = "application/octet-stream") -> Dict[str, Any]:
         """Sube un documento original al bucket de documentos de origen."""

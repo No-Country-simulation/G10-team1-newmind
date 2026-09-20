@@ -12,6 +12,17 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OCI_CONFIG_FILE: ${OCI_CONFIG_FILE:-~/.oci/config}
+      OCI_CONFIG_PROFILE: ${OCI_CONFIG_PROFILE:-DEFAULT}
+      OCI_COMPARTMENT_ID: ${OCI_COMPARTMENT_ID:-}
+      OCI_USER_OCID: ${OCI_USER_OCID:-}
+      OCI_FINGERPRINT: ${OCI_FINGERPRINT:-}
+      OCI_TENANCY_OCID: ${OCI_TENANCY_OCID:-}
+      OCI_REGION: ${OCI_REGION:-us-ashburn-1}
+      OCI_KEY_FILE: ${OCI_KEY_FILE:-}
+      OCI_OBJECT_STORAGE_NAMESPACE: ${OCI_OBJECT_STORAGE_NAMESPACE:-}
+      OCI_BUCKET_DOCS: ${OCI_BUCKET_DOCS:-nuevamente-documentos-origen}
+      OCI_BUCKET_OUTPUTS: ${OCI_BUCKET_OUTPUTS:-nuevamente-contenidos-educativos}
       CHROMA_PERSIST_DIR: /app/data/chroma_db
     volumes:
       - chroma-data:/app/data/chroma_db
@@ -35,6 +46,17 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OCI_CONFIG_FILE: ${OCI_CONFIG_FILE:-~/.oci/config}
+      OCI_CONFIG_PROFILE: ${OCI_CONFIG_PROFILE:-DEFAULT}
+      OCI_COMPARTMENT_ID: ${OCI_COMPARTMENT_ID:-}
+      OCI_USER_OCID: ${OCI_USER_OCID:-}
+      OCI_FINGERPRINT: ${OCI_FINGERPRINT:-}
+      OCI_TENANCY_OCID: ${OCI_TENANCY_OCID:-}
+      OCI_REGION: ${OCI_REGION:-us-ashburn-1}
+      OCI_KEY_FILE: ${OCI_KEY_FILE:-}
+      OCI_OBJECT_STORAGE_NAMESPACE: ${OCI_OBJECT_STORAGE_NAMESPACE:-}
+      OCI_BUCKET_DOCS: ${OCI_BUCKET_DOCS:-nuevamente-documentos-origen}
+      OCI_BUCKET_OUTPUTS: ${OCI_BUCKET_OUTPUTS:-nuevamente-contenidos-educativos}
       CHROMA_PERSIST_DIR: /app/data/chroma_db
     volumes:
       - chroma-data:/app/data/chroma_db
