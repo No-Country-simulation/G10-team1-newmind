@@ -1,0 +1,52 @@
+name: Solicitud de funcionalidad
+description: Proponer una funcionalidad o mejora de producto
+title: "[Funcionalidad]: "
+labels:
+  - enhancement
+assignees: []
+body:
+  - type: textarea
+    id: objective-problem
+    attributes:
+      label: Objetivo y problema
+      description: Explicar qué se necesita y qué problema se busca resolver.
+      placeholder: Describir el objetivo, el problema actual y las personas afectadas.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Solución propuesta
+      description: Describir brevemente la solución o el comportamiento esperado.
+      placeholder: Detallar la funcionalidad o mejora propuesta.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Criterios de aceptación
+      description: Enumerar condiciones verificables que permitan considerar completa la solicitud.
+      placeholder: |
+        - [ ] Criterio verificable 1
+        - [ ] Criterio verificable 2
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Contexto adicional
+      description: Incluir enlaces, referencias, capturas o cualquier información complementaria.
+      placeholder: Agregar contexto adicional si corresponde.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: duplicate-confirmation
+    attributes:
+      label: Verificación previa
+      options:
+        - label: Confirmo que busqué una incidencia equivalente antes de crear esta solicitud.
+          required: true
