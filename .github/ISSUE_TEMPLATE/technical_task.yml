@@ -1,0 +1,52 @@
+name: Tarea técnica o mejora
+description: Proponer mantenimiento, refactorización o una mejora técnica
+title: "[Técnica]: "
+labels:
+  - enhancement
+assignees: []
+body:
+  - type: textarea
+    id: technical-objective
+    attributes:
+      label: Objetivo técnico
+      description: Explicar el resultado técnico que se necesita alcanzar.
+      placeholder: Describir el objetivo y la motivación técnica.
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Alcance
+      description: Indicar qué incluye la tarea y qué queda fuera de su alcance.
+      placeholder: Detallar los componentes afectados, las inclusiones y las exclusiones.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Criterios de aceptación
+      description: Enumerar condiciones técnicas verificables que permitan considerar completa la tarea.
+      placeholder: |
+        - [ ] Criterio verificable 1
+        - [ ] Criterio verificable 2
+    validations:
+      required: true
+
+  - type: textarea
+    id: technical-notes
+    attributes:
+      label: Notas técnicas
+      description: Incluir dependencias, riesgos, restricciones o referencias relevantes.
+      placeholder: Agregar notas técnicas si corresponde.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: duplicate-confirmation
+    attributes:
+      label: Verificación previa
+      options:
+        - label: Confirmo que busqué una incidencia equivalente antes de crear esta tarea.
+          required: true

@@ -1,0 +1,53 @@
+name: Reporte de bug
+description: Reportar un comportamiento incorrecto o inesperado
+title: "[Bug]: "
+labels:
+  - bug
+assignees: []
+body:
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: Descripción
+      description: Describir de forma clara el comportamiento incorrecto o inesperado.
+      placeholder: Indicar qué ocurrió y cuál fue el impacto observado.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction-steps
+    attributes:
+      label: Pasos para reproducir
+      description: Detallar una secuencia mínima que permita reproducir el problema.
+      placeholder: |
+        1. Ir a...
+        2. Seleccionar...
+        3. Observar...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Resultado esperado
+      description: Describir el comportamiento que debería haberse producido.
+      placeholder: Indicar el resultado esperado.
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment-evidence
+    attributes:
+      label: Entorno y evidencia
+      description: Incluir navegador, sistema operativo, versión, mensajes de error, capturas u otros datos útiles.
+      placeholder: Detallar el entorno y adjuntar o enlazar la evidencia disponible.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: duplicate-confirmation
+    attributes:
+      label: Verificación previa
+      options:
+        - label: Confirmo que busqué una incidencia equivalente antes de crear este reporte.
+          required: true
