@@ -55,7 +55,8 @@ class HealthResponse(ApiModel):
     service: str
     environment: str
     oci_mode: str
-    oci_namespace: str
+    oci_namespace: str | None
+    oci_storage: dict[str, Any]
     chroma_persist_dir: str
 
 

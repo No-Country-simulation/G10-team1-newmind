@@ -23,12 +23,14 @@ logger = logging.getLogger(__name__)
 
 def build_health_payload() -> dict[str, Any]:
     """Return runtime health metadata for container checks."""
+    oci_readiness = oci_storage.readiness()
     return {
         "status": "ok",
         "service": "newmind-learning-backend",
         "environment": settings.APP_ENV,
-        "oci_mode": "emulated" if oci_storage.is_emulated else "oci",
-        "oci_namespace": oci_storage.namespace,
+        "oci_mode": "emulated" if oci_readiness["local_fallback"] else "oci",
+        "oci_namespace": oci_readiness["namespace"],
+        "oci_storage": oci_readiness,
         "chroma_persist_dir": settings.CHROMA_PERSIST_DIR,
     }
 

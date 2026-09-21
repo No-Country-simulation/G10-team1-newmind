@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     # Oracle Cloud Infrastructure (OCI Always Free)
     OCI_CONFIG_FILE: str = Field(default="~/.oci/config", description="Ruta al archivo config de OCI")
     OCI_CONFIG_PROFILE: str = Field(default="DEFAULT", description="Perfil del archivo config OCI")
+    OCI_COMPARTMENT_ID: Optional[str] = Field(default=None, description="OCID del compartment OCI para aprovisionamiento")
     OCI_USER_OCID: Optional[str] = Field(default=None, description="OCID del usuario OCI")
     OCI_FINGERPRINT: Optional[str] = Field(default=None, description="Fingerprint de la clave API")
     OCI_TENANCY_OCID: Optional[str] = Field(default=None, description="OCID del tenancy OCI")
