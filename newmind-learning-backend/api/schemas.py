@@ -8,6 +8,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from models.schemas import RespuestaAdaptacion
+
 
 class ApiModel(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
@@ -92,6 +94,11 @@ class AdaptationResponse(ApiModel):
     industry: IndustryValue
     detail_level: DetailLevelValue = Field(serialization_alias="detailLevel")
     status: AdaptationStatus
+    official_response: RespuestaAdaptacion | None = Field(
+        default=None,
+        serialization_alias="officialResponse",
+        description="Canonical v1 adaptation payload preserving the five official response blocks.",
+    )
     content: dict[str, Any] | None = None
     evaluation: QualityEvaluationResponse | None = None
     iteration: int | None = None

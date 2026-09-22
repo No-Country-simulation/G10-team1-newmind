@@ -57,6 +57,7 @@ def to_adaptation_response(record: AdaptationRecord) -> AdaptationResponse:
         industry=record.industry,
         detail_level=record.detail_level,
         status=record.status,
+        official_response=record.official_response,
         content=record.content,
         evaluation=record.evaluation,
         iteration=record.iteration,

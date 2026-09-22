@@ -1,5 +1,7 @@
 """Contract tests for the versioned FastAPI boundary."""
 
+import json
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -15,6 +17,18 @@ from models.schemas import (
     MetadatosAprendizaje,
     RespuestaAdaptacion,
 )
+
+
+CONTRACT_FIXTURE_PATH = (
+    Path(__file__).resolve().parents[1] / "contracts" / "openapi-v1-adaptation-response.fixture.json"
+)
+OFFICIAL_RESPONSE_BLOCKS = {
+    "status",
+    "metadatos",
+    "contenido_adaptado",
+    "evaluacion_calidad",
+    "almacenamiento_oci",
+}
 
 
 class FakeLoader:
@@ -47,6 +61,7 @@ class FakeEngine:
     def adapt_content(self, request):
         self.last_request = request
         return RespuestaAdaptacion(
+            status="exito",
             metadatos=MetadatosAprendizaje(
                 perfil_aplicado=request.perfil_destinatario.value,
                 formato_generado=request.formato_salida.value,
@@ -119,6 +134,21 @@ def test_health_and_openapi_expose_required_contract(api_context):
     } <= paths.keys()
     assert client.get("/docs").status_code == 200
 
+    schemas = client.get("/openapi.json").json()["components"]["schemas"]
+    assert "RespuestaAdaptacion" in schemas
+    assert schemas["RespuestaAdaptacion"]["required"] == [
+        "status",
+        "metadatos",
+        "contenido_adaptado",
+        "evaluacion_calidad",
+        "almacenamiento_oci",
+    ]
+    assert set(schemas["RespuestaAdaptacion"]["properties"]) == OFFICIAL_RESPONSE_BLOCKS
+    assert schemas["MetadatosAprendizaje"]["properties"]["tiempo_estimado_estudio_minutos"]["type"] == "integer"
+    assert schemas["ContenidoAdaptado"]["properties"]["items"]["type"] == "array"
+    assert schemas["EvaluacionCalidad"]["properties"]["anclaje_fuente_score"]["type"] == "number"
+    assert schemas["AlmacenamientoOCI"]["properties"]["objeto_id"]["type"] == "string"
+
     cors_response = client.options(
         "/health",
         headers={
@@ -127,6 +157,19 @@ def test_health_and_openapi_expose_required_contract(api_context):
         },
     )
     assert cors_response.headers["access-control-allow-origin"] == "http://localhost:5173"
+
+
+def test_canonical_contract_fixture_preserves_official_blocks():
+    fixture = json.loads(CONTRACT_FIXTURE_PATH.read_text(encoding="utf-8"))
+
+    assert set(fixture) == OFFICIAL_RESPONSE_BLOCKS
+    validated = RespuestaAdaptacion.model_validate(fixture)
+
+    assert validated.status == "exito"
+    assert isinstance(validated.metadatos.tiempo_estimado_estudio_minutos, int)
+    assert isinstance(validated.contenido_adaptado.items, list)
+    assert isinstance(validated.evaluacion_calidad.anclaje_fuente_score, float)
+    assert isinstance(validated.almacenamiento_oci.objeto_id, str)
 
 
 def test_document_crud_and_filename_sanitization(api_context):
@@ -179,6 +222,12 @@ def test_adaptation_workflow_maps_transport_values_and_filters(api_context):
     status_response = client.get(f"/api/v1/adaptations/{created['id']}/status")
     assert status_response.json()["status"] == "completed"
     completed = client.get(f"/api/v1/adaptations/{created['id']}").json()
+    assert set(completed["officialResponse"]) == OFFICIAL_RESPONSE_BLOCKS
+    assert completed["officialResponse"]["status"] == "exito"
+    assert completed["officialResponse"]["metadatos"]["perfil_aplicado"] == "Líder Técnico / Arquitecto"
+    assert completed["officialResponse"]["contenido_adaptado"]["titulo"] == "Adapted content"
+    assert completed["officialResponse"]["evaluacion_calidad"]["anclaje_fuente_score"] == 0.9
+    assert completed["officialResponse"]["almacenamiento_oci"]["objeto_id"] == "result.json"
     assert completed["content"]["titulo"] == "Adapted content"
     assert completed["evaluation"]["score"] == 0.9
     assert engine.last_request.perfil_destinatario.value == "Líder Técnico / Arquitecto"

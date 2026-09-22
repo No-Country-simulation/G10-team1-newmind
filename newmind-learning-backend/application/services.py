@@ -162,6 +162,7 @@ class AdaptationService:
             self.repository.update(
                 adaptation_id,
                 status="completed",
+                official_response=result.model_dump(mode="json"),
                 content=result.contenido_adaptado.model_dump(mode="json"),
                 evaluation={
                     "approved": score >= 0.8,

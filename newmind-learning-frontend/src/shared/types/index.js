@@ -26,6 +26,28 @@
  */
 
 /**
+ * @typedef {Object} AdaptationMetadata
+ * @property {string} perfil_aplicado
+ * @property {string} formato_generado
+ * @property {number} tiempo_estimado_estudio_minutos
+ * @property {string[]} conceptos_clave
+ */
+
+/**
+ * @typedef {Object} AdaptedContent
+ * @property {string} titulo
+ * @property {string} introduccion_contextualizada
+ * @property {Object[]} items
+ */
+
+/**
+ * @typedef {Object} OfficialQualityEvaluation
+ * @property {number} anclaje_fuente_score
+ * @property {string} claridad_pedagogica
+ * @property {string} observaciones
+ */
+
+/**
  * @typedef {Object} QualityEvaluation
  * @property {boolean} approved
  * @property {number} score
@@ -38,6 +60,22 @@
  */
 
 /**
+ * @typedef {Object} OciStorageResult
+ * @property {string} bucket
+ * @property {string} objeto_id
+ * @property {string} status_upload
+ */
+
+/**
+ * @typedef {Object} OfficialAdaptationResponse
+ * @property {string} status
+ * @property {AdaptationMetadata} metadatos
+ * @property {AdaptedContent} contenido_adaptado
+ * @property {OfficialQualityEvaluation} evaluacion_calidad
+ * @property {OciStorageResult} almacenamiento_oci
+ */
+
+/**
  * @typedef {Object} Adaptation
  * @property {number} id
  * @property {number} documentId
@@ -47,6 +85,7 @@
  * @property {Industry} industry
  * @property {DetailLevel} detailLevel
  * @property {AdaptationStatus} status
+ * @property {OfficialAdaptationResponse} [officialResponse]
  * @property {Object} [content]
  * @property {QualityEvaluation} [evaluation]
  * @property {number} [iteration]

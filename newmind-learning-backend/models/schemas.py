@@ -84,7 +84,7 @@ class AlmacenamientoOCI(BaseModel):
 
 # --- Modelo de Respuesta Final (Salida Estructurada) ---
 class RespuestaAdaptacion(BaseModel):
-    status: str = Field(default="exito", description="Estado de la operación")
+    status: str = Field(..., description="Estado de la operación")
     metadatos: MetadatosAprendizaje
     contenido_adaptado: ContenidoAdaptado
     evaluacion_calidad: EvaluacionCalidad
