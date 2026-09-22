@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, UploadCloud, Settings } from 'lucide-react'
 import { DocumentUploader } from '@/widgets/document-uploader/DocumentUploader'
 import { AdaptationForm } from '@/widgets/adaptation-form/AdaptationForm'
+import { documentsApi, adaptationsApi } from '@/shared/api'
 import { Card } from '@/shared/ui/Card'
 import { Alert } from '@/shared/ui/Alert'
 import { cn } from '@/shared/utils'
@@ -44,16 +45,11 @@ function useDocumentUpload() {
     setUploadError(null)
     setUploading(true)
     try {
-      // TODO: replace with documentsApi.upload(file)
-      await new Promise((r) => setTimeout(r, 1200))
-      setUploadedDoc({
-        id:    Date.now(),
-        title: file.name.replace(/\.[^.]+$/, ''),
-        type:  file.name.split('.').pop().toLowerCase(),
-        size:  file.size,
-      })
-    } catch {
-      setUploadError('Error al subir el archivo. Intentá de nuevo.')
+      const document = await documentsApi.upload(file)
+      setUploadedDoc(document)
+    } catch (err) {
+      setUploadedDoc(null)
+      setUploadError(err.message ?? 'Error al subir el archivo. Intentá de nuevo.')
     } finally {
       setUploading(false)
     }
@@ -79,20 +75,11 @@ export function NewAdaptationPage() {
     setGlobalError(null)
     setGenerating(true)
     try {
-      // TODO: replace with adaptationsApi.create({ documentId: uploadedDoc.id, ...formValues })
-      await new Promise((r) => setTimeout(r, 1500))
-      navigate(`/result/${Date.now()}`, {
-        state: {
-          adaptation: {
-            id:            Date.now(),
-            documentId:    uploadedDoc.id,
-            documentTitle: uploadedDoc.title,
-            ...formValues,
-            status:    'processing',
-            createdAt: new Date().toISOString(),
-          },
-        },
+      const adaptation = await adaptationsApi.create({
+        documentId: uploadedDoc.id,
+        ...formValues,
       })
+      navigate(`/result/${adaptation.id}`, { state: { adaptation } })
     } catch (err) {
       setGlobalError(err.message ?? 'Error al iniciar la generación.')
     } finally {
