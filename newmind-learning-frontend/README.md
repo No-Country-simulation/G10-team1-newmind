@@ -84,7 +84,7 @@ NuevaMente transforma documentos técnicos en contenido educativo adaptado a dis
 
 ### Requisitos
 
-- **Node.js** 18 o superior
+- **Node.js** 22, o una versión compatible con Vite 8: `^20.19.0 || >=22.12.0`
 - **npm** 9 o superior
 
 ### Pasos
@@ -106,6 +106,34 @@ Editar `.env` y configurar la URL del backend:
 ```env
 VITE_API_URL=http://localhost:8000
 ```
+
+### Arranque con Docker
+
+La imagen incluida está pensada únicamente para desarrollo local: ejecuta el servidor de Vite con hot reload y no es una imagen lista para producción. Este flujo no requiere instalar Node.js en el host.
+
+Desde la raíz del repositorio, levantá el frontend y el backend:
+
+```bash
+docker compose up --build app frontend
+```
+
+El frontend queda disponible en `http://localhost:5173`, el backend en `http://localhost:8000` y su endpoint de salud en `http://localhost:8000/health`.
+
+Para levantar solamente el frontend desde la raíz:
+
+```bash
+docker compose up --build frontend
+```
+
+Compose configura `VITE_API_URL=http://localhost:8000`. Esta variable se usa en el código que corre en el navegador, así que debe apuntar a una URL accesible desde el host. El nombre de servicio `app` solo funciona como DNS entre contenedores y el navegador no puede resolverlo.
+
+Para detener los servicios:
+
+```bash
+docker compose down
+```
+
+> Los flujos actuales del frontend usan datos mock. Ejecutar el frontend y el backend juntos no prueba que esos flujos estén integrados con la API.
 
 ### Comandos disponibles
 
