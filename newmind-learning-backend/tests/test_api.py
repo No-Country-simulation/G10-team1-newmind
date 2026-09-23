@@ -22,6 +22,9 @@ from models.schemas import (
 CONTRACT_FIXTURE_PATH = (
     Path(__file__).resolve().parents[1] / "contracts" / "openapi-v1-adaptation-response.fixture.json"
 )
+CONTRACT_SCHEMA_FIXTURE_PATH = (
+    Path(__file__).resolve().parents[1] / "contracts" / "openapi-v1-adaptation-response.schema.json"
+)
 OFFICIAL_RESPONSE_BLOCKS = {
     "status",
     "metadatos",
@@ -29,6 +32,51 @@ OFFICIAL_RESPONSE_BLOCKS = {
     "evaluacion_calidad",
     "almacenamiento_oci",
 }
+OFFICIAL_RESPONSE_SCHEMA_NAMES = {
+    "RespuestaAdaptacion",
+    "MetadatosAprendizaje",
+    "ContenidoAdaptado",
+    "EvaluacionCalidad",
+    "AlmacenamientoOCI",
+}
+OPENAPI_CONTRACT_KEYS = {
+    "$ref",
+    "additionalProperties",
+    "default",
+    "enum",
+    "items",
+    "maximum",
+    "minimum",
+    "properties",
+    "required",
+    "type",
+}
+
+
+def normalize_openapi_contract_schema(value: Any) -> Any:
+    if isinstance(value, dict):
+        normalized = {}
+        for key in sorted(value):
+            if key not in OPENAPI_CONTRACT_KEYS:
+                continue
+            if key == "properties":
+                normalized[key] = {
+                    property_name: normalize_openapi_contract_schema(property_schema)
+                    for property_name, property_schema in sorted(value[key].items())
+                }
+                continue
+            normalized[key] = normalize_openapi_contract_schema(value[key])
+        return normalized
+    if isinstance(value, list):
+        return [normalize_openapi_contract_schema(item) for item in value]
+    return value
+
+
+def adaptation_contract_schema_subset(schemas: dict[str, Any]) -> dict[str, Any]:
+    return {
+        name: normalize_openapi_contract_schema(schemas[name])
+        for name in sorted(OFFICIAL_RESPONSE_SCHEMA_NAMES)
+    }
 
 
 class FakeLoader:
@@ -170,6 +218,14 @@ def test_canonical_contract_fixture_preserves_official_blocks():
     assert isinstance(validated.contenido_adaptado.items, list)
     assert isinstance(validated.evaluacion_calidad.anclaje_fuente_score, float)
     assert isinstance(validated.almacenamiento_oci.objeto_id, str)
+
+
+def test_openapi_schema_matches_frozen_v1_adaptation_contract(api_context):
+    client, _ = api_context
+    schemas = client.get("/openapi.json").json()["components"]["schemas"]
+    expected = json.loads(CONTRACT_SCHEMA_FIXTURE_PATH.read_text(encoding="utf-8"))
+
+    assert adaptation_contract_schema_subset(schemas) == expected
 
 
 def test_document_crud_and_filename_sanitization(api_context):

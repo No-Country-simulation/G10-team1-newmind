@@ -1,0 +1,118 @@
+{
+  "AlmacenamientoOCI": {
+    "properties": {
+      "bucket": {
+        "type": "string"
+      },
+      "objeto_id": {
+        "type": "string"
+      },
+      "status_upload": {
+        "default": "completado",
+        "type": "string"
+      }
+    },
+    "required": [
+      "bucket",
+      "objeto_id"
+    ],
+    "type": "object"
+  },
+  "ContenidoAdaptado": {
+    "properties": {
+      "introduccion_contextualizada": {
+        "type": "string"
+      },
+      "items": {
+        "items": {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        "type": "array"
+      },
+      "titulo": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "titulo",
+      "introduccion_contextualizada",
+      "items"
+    ],
+    "type": "object"
+  },
+  "EvaluacionCalidad": {
+    "properties": {
+      "anclaje_fuente_score": {
+        "maximum": 1.0,
+        "minimum": 0.0,
+        "type": "number"
+      },
+      "claridad_pedagogica": {
+        "type": "string"
+      },
+      "observaciones": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "anclaje_fuente_score",
+      "claridad_pedagogica",
+      "observaciones"
+    ],
+    "type": "object"
+  },
+  "MetadatosAprendizaje": {
+    "properties": {
+      "conceptos_clave": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "formato_generado": {
+        "type": "string"
+      },
+      "perfil_aplicado": {
+        "type": "string"
+      },
+      "tiempo_estimado_estudio_minutos": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "perfil_aplicado",
+      "formato_generado",
+      "tiempo_estimado_estudio_minutos",
+      "conceptos_clave"
+    ],
+    "type": "object"
+  },
+  "RespuestaAdaptacion": {
+    "properties": {
+      "almacenamiento_oci": {
+        "$ref": "#/components/schemas/AlmacenamientoOCI"
+      },
+      "contenido_adaptado": {
+        "$ref": "#/components/schemas/ContenidoAdaptado"
+      },
+      "evaluacion_calidad": {
+        "$ref": "#/components/schemas/EvaluacionCalidad"
+      },
+      "metadatos": {
+        "$ref": "#/components/schemas/MetadatosAprendizaje"
+      },
+      "status": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "status",
+      "metadatos",
+      "contenido_adaptado",
+      "evaluacion_calidad",
+      "almacenamiento_oci"
+    ],
+    "type": "object"
+  }
+}
