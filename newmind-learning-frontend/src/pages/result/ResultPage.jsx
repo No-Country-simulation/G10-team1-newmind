@@ -3,87 +3,102 @@ import { Link, useParams, useLocation } from 'react-router-dom'
 import { ArrowLeft, Download, RefreshCw } from 'lucide-react'
 import { GenerationStatus } from '@/widgets/generation-status/GenerationStatus'
 import { ContentViewer } from '@/widgets/content-viewer/ContentViewer'
+import { adaptationsApi } from '@/shared/api'
 import { Card } from '@/shared/ui/Card'
 import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
 import { Alert } from '@/shared/ui/Alert'
 
-// ── Mock pipeline simulation — remove when real API polling is implemented ────
+// ── Polling helpers ────────────────────────────────────────────────────────────
 
 const AGENT_SEQUENCE = ['orchestrator', 'researcher', 'context', 'generator', 'critic']
+const POLL_INTERVAL_MS = 2_000
 
-/** Simulated completed adaptation for demo purposes. */
-const MOCK_COMPLETED = {
-  status: 'completed',
-  evaluation: {
-    score: 0.92,
-    approved: true,
-    criteria: {
-      fidelity:          0.95,
-      profile_alignment: 0.90,
-      format_compliance: 0.94,
-      coherence:         0.91,
-    },
-    issues: [],
-  },
-  content: {
-    cards: [
-      {
-        concept: 'VCN',
-        question: '¿Qué es una VCN en OCI?',
-        answer: 'Una Virtual Cloud Network (VCN) es una red privada definida por software dentro de Oracle Cloud Infrastructure.',
-        difficulty: 'Básico',
-        source: 'Sección 1',
-      },
-      {
-        concept: 'Subnet',
-        question: '¿Para qué sirve una subnet en una VCN?',
-        answer: 'Divide la VCN en segmentos más pequeños para organizar recursos y controlar el tráfico de red.',
-        difficulty: 'Básico',
-        source: 'Sección 2',
-      },
-      {
-        concept: 'Internet Gateway',
-        question: '¿Qué función tiene un Internet Gateway?',
-        answer: 'Permite que los recursos dentro de la VCN se comuniquen con internet de forma bidireccional.',
-        difficulty: 'Intermedio',
-        source: 'Sección 3',
-      },
-      {
-        concept: 'Route Table',
-        question: '¿Qué es una Route Table?',
-        answer: 'Define las reglas de enrutamiento para determinar a dónde va el tráfico de red dentro y fuera de la VCN.',
-        difficulty: 'Intermedio',
-        source: 'Sección 4',
-      },
-    ],
-  },
-}
-
-// ── Custom hook — pipeline simulation ────────────────────────────────────────
-
-function usePipelineSimulation(initialStatus, onComplete) {
+function usePipelineAgent(status) {
   const [currentAgent, setCurrentAgent] = useState(AGENT_SEQUENCE[0])
 
   useEffect(() => {
-    if (initialStatus !== 'processing') return
+    if (status !== 'processing') return
 
     let index = 0
     const interval = setInterval(() => {
-      if (index >= AGENT_SEQUENCE.length - 1) {
-        clearInterval(interval)
-        onComplete()
-        return
-      }
-      index++
+      index = Math.min(index + 1, AGENT_SEQUENCE.length - 1)
       setCurrentAgent(AGENT_SEQUENCE[index])
     }, 1800)
 
     return () => clearInterval(interval)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialStatus])
+  }, [status])
 
   return { currentAgent }
+}
+
+function isTerminalStatus(status) {
+  return status === 'completed' || status === 'failed'
+}
+
+function useAdaptationResult(id, initialAdaptation) {
+  const [adaptation, setAdaptation] = useState(initialAdaptation)
+  const [loading, setLoading] = useState(!initialAdaptation)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    let ignore = false
+    let timeoutId
+
+    const loadFullAdaptation = async () => {
+      const fullAdaptation = await adaptationsApi.get(id)
+      if (!ignore) {
+        setAdaptation(fullAdaptation)
+      }
+      return fullAdaptation
+    }
+
+    const pollStatus = async () => {
+      try {
+        const statusUpdate = await adaptationsApi.getStatus(id)
+        if (ignore) return
+
+        setError(null)
+        setAdaptation((prev) => ({ ...prev, ...statusUpdate }))
+
+        if (isTerminalStatus(statusUpdate.status)) {
+          await loadFullAdaptation()
+          return
+        }
+
+        timeoutId = setTimeout(pollStatus, POLL_INTERVAL_MS)
+      } catch (err) {
+        if (!ignore) setError(err.message ?? 'Error al consultar el estado de la adaptación.')
+      } finally {
+        if (!ignore) setLoading(false)
+      }
+    }
+
+    if (initialAdaptation && !isTerminalStatus(initialAdaptation.status)) {
+      timeoutId = setTimeout(pollStatus, POLL_INTERVAL_MS)
+    } else {
+      loadFullAdaptation()
+        .then((fullAdaptation) => {
+          if (!ignore && !isTerminalStatus(fullAdaptation.status)) {
+            timeoutId = setTimeout(pollStatus, POLL_INTERVAL_MS)
+          }
+          if (!ignore) setError(null)
+        })
+        .catch((err) => {
+          if (!ignore) setError(err.message ?? 'Error al cargar la adaptación.')
+        })
+        .finally(() => {
+          if (!ignore) setLoading(false)
+        })
+    }
+
+    return () => {
+      ignore = true
+      clearTimeout(timeoutId)
+    }
+  }, [id, initialAdaptation])
+
+  return { adaptation, loading, error }
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -121,25 +136,27 @@ function PageHeader({ adaptation }) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export function ResultPage() {
-  useParams() // id available for future API polling: const { id } = useParams()
+  const { id } = useParams()
   const { state } = useLocation()
 
-  const [adaptation, setAdaptation] = useState(state?.adaptation ?? null)
+  const { adaptation, loading, error } = useAdaptationResult(id, state?.adaptation ?? null)
+  const { currentAgent } = usePipelineAgent(adaptation?.status)
 
-  const handlePipelineComplete = () => {
-    setAdaptation((prev) => ({ ...prev, ...MOCK_COMPLETED }))
+  if (loading && !adaptation) {
+    return (
+      <div className="max-w-3xl mx-auto">
+        <Card>
+          <p className="text-sm text-slate-400">Cargando adaptación...</p>
+        </Card>
+      </div>
+    )
   }
-
-  const { currentAgent } = usePipelineSimulation(
-    adaptation?.status,
-    handlePipelineComplete
-  )
 
   if (!adaptation) {
     return (
       <div className="max-w-3xl mx-auto">
         <Alert variant="error" title="Adaptación no encontrada">
-          No se pudo cargar la información de esta adaptación.
+          {error ?? 'No se pudo cargar la información de esta adaptación.'}
           <Link to="/history" className="block mt-2 text-sm underline">
             Ver historial
           </Link>
@@ -154,6 +171,12 @@ export function ResultPage() {
     <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
       <PageHeader adaptation={adaptation} />
       <AdaptationMeta adaptation={adaptation} />
+
+      {error && (
+        <Alert variant="error" title="No se pudo actualizar el estado">
+          {error}
+        </Alert>
+      )}
 
       {/* Pipeline status */}
       {isProcessing && (
@@ -175,7 +198,7 @@ export function ResultPage() {
       {/* Failed */}
       {adaptation.status === 'failed' && (
         <Alert variant="error" title="Error en la generación">
-          Ocurrió un error durante el procesamiento. El Critic Agent rechazó el contenido tras agotar los intentos.
+          {adaptation.error ?? 'Ocurrió un error durante el procesamiento.'}
           <div className="mt-3">
             <Link to="/new">
               <Button variant="secondary" size="sm" leftIcon={<RefreshCw className="w-4 h-4" />}>

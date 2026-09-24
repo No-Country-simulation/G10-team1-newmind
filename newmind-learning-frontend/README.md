@@ -76,8 +76,6 @@ NuevaMente transforma documentos técnicos en contenido educativo adaptado a dis
 </tr>
 </table>
 
-> 💡 **Para desarrolladores nuevos:** el frontend funciona completamente con datos simulados sin necesidad de correr el backend. Ver [Conexión con el backend](#-conexión-con-el-backend).
-
 ---
 
 ## 🚀 Instalación y arranque
@@ -333,12 +331,12 @@ Pantalla de inicio y primer punto de contacto del usuario.
 <tr>
 <td>Stats (4 tarjetas)</td>
 <td>Documentos cargados · Adaptaciones generadas · Formatos disponibles · Score Critic promedio</td>
-<td>Mock → reemplazar con API</td>
+<td>Mock local</td>
 </tr>
 <tr>
 <td>Adaptaciones recientes</td>
 <td>Últimas 3 adaptaciones con <code>AdaptationCard</code></td>
-<td>Mock → <code>adaptationsApi.list()</code></td>
+<td>Mock local</td>
 </tr>
 <tr>
 <td>Inicio rápido</td>
@@ -864,38 +862,38 @@ Todo lo que puede ser importado desde cualquier capa sin lógica de negocio.
 
 ## 🔌 Conexión con el backend
 
-El frontend funciona completamente con datos mock. Cuando el backend esté listo, hay **5 puntos específicos** marcados con `// TODO:` en el código donde conectar la API real.
+El frontend usa `VITE_API_URL` y el cliente compartido `src/shared/api/index.js` como única frontera HTTP. Los flujos de nueva adaptación, resultado e historial consumen los endpoints versionados del backend; el dashboard mantiene datos locales hasta que exista un endpoint de estadísticas.
 
 <br/>
 
 <table>
 <thead>
-<tr><th>Archivo</th><th>Qué simula ahora</th><th>Qué conectar</th></tr>
+<tr><th>Archivo</th><th>Estado actual</th><th>Endpoint compartido</th></tr>
 </thead>
 <tbody>
 <tr>
 <td><code>NewAdaptationPage.jsx</code></td>
-<td><code>setTimeout</code> de 1.2s</td>
+<td>Carga real de documentos</td>
 <td><code>documentsApi.upload(file)</code></td>
 </tr>
 <tr>
 <td><code>NewAdaptationPage.jsx</code></td>
-<td><code>setTimeout</code> de 1.5s</td>
+<td>Creación real de adaptaciones</td>
 <td><code>adaptationsApi.create(payload)</code></td>
 </tr>
 <tr>
 <td><code>ResultPage.jsx</code></td>
-<td><code>setInterval</code> de 1.8s por agente</td>
-<td>Polling a <code>adaptationsApi.getStatus(id)</code></td>
+<td>Polling real de estado y carga del resultado completo</td>
+<td><code>adaptationsApi.getStatus(id)</code> + <code>adaptationsApi.get(id)</code></td>
 </tr>
 <tr>
 <td><code>DashboardPage.jsx</code></td>
 <td>Arrays hardcodeados (<code>MOCK_STATS</code>, <code>MOCK_RECENT_ADAPTATIONS</code>)</td>
-<td><code>adaptationsApi.list()</code> + endpoint de estadísticas</td>
+<td>Pendiente de endpoint de estadísticas</td>
 </tr>
 <tr>
 <td><code>HistoryPage.jsx</code></td>
-<td>Array hardcodeado (<code>MOCK_HISTORY</code>)</td>
+<td>Listado real con filtros de backend y búsqueda local por título</td>
 <td><code>adaptationsApi.list(params)</code> con filtros</td>
 </tr>
 </tbody>
