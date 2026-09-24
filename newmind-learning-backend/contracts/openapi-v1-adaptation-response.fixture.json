@@ -1,0 +1,24 @@
+{
+  "status": "exito",
+  "metadatos": {
+    "perfil_aplicado": "Líder Técnico / Arquitecto",
+    "formato_generado": "Resumen Ejecutivo (TL;DR)",
+    "tiempo_estimado_estudio_minutos": 5,
+    "conceptos_clave": ["API", "contrato"]
+  },
+  "contenido_adaptado": {
+    "titulo": "Adapted content",
+    "introduccion_contextualizada": "An introduction",
+    "items": [{ "concept": "API contract" }]
+  },
+  "evaluacion_calidad": {
+    "anclaje_fuente_score": 0.9,
+    "claridad_pedagogica": "High",
+    "observaciones": "Grounded"
+  },
+  "almacenamiento_oci": {
+    "bucket": "outputs",
+    "objeto_id": "result.json",
+    "status_upload": "completado"
+  }
+}

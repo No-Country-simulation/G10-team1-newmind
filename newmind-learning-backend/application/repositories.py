@@ -41,6 +41,7 @@ class AdaptationRecord:
     completed_at: datetime | None = None
     content: dict[str, Any] | None = None
     evaluation: dict[str, Any] | None = None
+    official_response: dict[str, Any] | None = None
     iteration: int | None = None
     error: str | None = None
 
