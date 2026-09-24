@@ -29,6 +29,15 @@ services:
       - local-storage:/app/data/oci_local_storage
     restart: unless-stopped
 
+  frontend:
+    build:
+      context: ./newmind-learning-frontend
+    image: newmind-learning-frontend:local
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: http://localhost:8000
+
   app-embeddings:
     profiles:
       - embeddings

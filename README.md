@@ -12,23 +12,48 @@ Este repositorio está organizado como monorepo para separar el backend y el fro
 
 ## Inicio rápido con Docker
 
-Desde la raíz del repositorio:
+Este flujo es únicamente para desarrollo local; no representa una configuración lista para producción.
+
+Desde la raíz del repositorio, levantá el stack completo:
+
+```bash
+docker compose up --build app frontend
+```
+
+Los servicios quedan disponibles en:
+
+| Servicio | URL |
+| --- | --- |
+| Frontend | `http://localhost:5173` |
+| Backend | `http://localhost:8000` |
+| Salud del backend | `http://localhost:8000/health` |
+
+### Iniciar cada servicio por separado
+
+Todos los comandos se ejecutan desde la raíz del repositorio.
+
+Solo backend:
 
 ```bash
 docker compose up --build app
 ```
 
-El backend queda disponible en:
+Solo frontend:
 
-```text
-http://localhost:8000/health
+```bash
+docker compose up --build frontend
 ```
 
-El servicio `app` construye el backend usando este contexto:
+Cada servicio usa su propio contexto e imagen:
 
-```text
-./newmind-learning-backend
-```
+| Servicio | Contexto de construcción | Imagen local |
+| --- | --- | --- |
+| `app` | `./newmind-learning-backend` | `newmind-learning-backend:local` |
+| `frontend` | `./newmind-learning-frontend` | `newmind-learning-frontend:local` |
+
+El frontend recibe `VITE_API_URL=http://localhost:8000`. Vite expone esa variable al código que se ejecuta en el navegador, por lo que la URL debe ser accesible desde el host. El nombre DNS `app` solo se resuelve dentro de la red de Compose y el navegador no puede usarlo.
+
+> El frontend todavía usa flujos con datos mock. Levantar ambos servicios no demuestra por sí solo que esos flujos estén integrados con el backend.
 
 Para detener los contenedores sin borrar datos persistidos:
 
@@ -61,6 +86,7 @@ Variables principales:
 | `LOG_LEVEL` | Nivel de logging; por defecto `INFO`. |
 | `BACKEND_HOST` | Host interno del entrypoint backend; por defecto `0.0.0.0`. |
 | `BACKEND_PORT` | Puerto interno del entrypoint backend; por defecto `8000`. |
+| `VITE_API_URL` | URL del backend accesible desde el navegador; en el entorno Docker local usa `http://localhost:8000`. |
 
 ## Perfil opcional de embeddings locales
 
@@ -106,4 +132,4 @@ docker run --rm newmind-learning-backend:local pytest
 
 ## Frontend
 
-El frontend vive en `newmind-learning-frontend/` y se mantiene separado de la imagen Docker del backend. La configuración Docker del frontend se trabajará en una Issue independiente.
+El frontend vive en `newmind-learning-frontend/` y se mantiene separado de la imagen Docker del backend. Su imagen ejecuta el servidor de desarrollo de Vite en `0.0.0.0:5173`; no es una imagen de producción.
