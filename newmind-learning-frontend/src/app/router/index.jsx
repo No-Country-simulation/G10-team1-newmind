@@ -3,7 +3,7 @@ import { DashboardPage } from '@/pages/dashboard/DashboardPage'
 import { NewAdaptationPage } from '@/pages/new-adaptation/NewAdaptationPage'
 import { ResultPage } from '@/pages/result/ResultPage'
 import { HistoryPage } from '@/pages/history/HistoryPage'
-import { FlashcardsPage } from '@/pages/flashcardsPage/FlashCardsPage'
+import { FlashcardsPage } from '@/pages/flashcardsPage/FlashcardsPage'
 
 export function AppRouter() {
   return (
