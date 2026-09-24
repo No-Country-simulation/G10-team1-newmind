@@ -76,8 +76,6 @@ NuevaMente transforma documentos técnicos en contenido educativo adaptado a dis
 </tr>
 </table>
 
-> 💡 **Para desarrolladores nuevos:** los flujos de carga, generación, resultado e historial consumen la API configurada en `VITE_API_URL`. Ver [Conexión con el backend](#-conexión-con-el-backend).
-
 ---
 
 ## 🚀 Instalación y arranque
