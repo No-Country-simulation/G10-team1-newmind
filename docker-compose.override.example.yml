@@ -1,0 +1,16 @@
+services:
+  app:
+    volumes:
+      - chroma-data:/app/data/chroma_db
+      - local-storage:/app/data/oci_local_storage
+      # Copiá este archivo como docker-compose.override.yml y reemplazá el lado izquierdo
+      # con la ruta local de tu propia clave privada OCI. Mantené el montaje como solo lectura.
+      - ${OCI_PRIVATE_KEY_HOST_PATH:-/path/to/oci_api_key.pem}:/run/secrets/oci_api_key.pem:ro
+
+  app-embeddings:
+    volumes:
+      - chroma-data:/app/data/chroma_db
+      - local-storage:/app/data/oci_local_storage
+      # Copiá este archivo como docker-compose.override.yml y reemplazá el lado izquierdo
+      # con la ruta local de tu propia clave privada OCI. Mantené el montaje como solo lectura.
+      - ${OCI_PRIVATE_KEY_HOST_PATH:-/path/to/oci_api_key.pem}:/run/secrets/oci_api_key.pem:ro

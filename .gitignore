@@ -18,3 +18,6 @@ venv/
 # Backend local runtime data
 newmind-learning-backend/data/chroma_db/
 newmind-learning-backend/data/oci_local_storage/
+
+# Docker
+docker-compose.override.yml
