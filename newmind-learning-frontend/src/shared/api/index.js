@@ -79,8 +79,9 @@ export const adaptationsApi = {
   /**
    * Poll for status updates during generation.
    * @param {number} id
+   * @param {import('axios').AxiosRequestConfig} [config]
    */
-  getStatus: (id) => apiClient.get(`/api/v1/adaptations/${id}/status`),
+  getStatus: (id, config) => apiClient.get(`/api/v1/adaptations/${id}/status`, config),
 }
 
 /**
