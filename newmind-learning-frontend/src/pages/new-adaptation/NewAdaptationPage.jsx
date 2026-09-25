@@ -58,6 +58,14 @@ function useDocumentUpload() {
   return { uploading, uploadedDoc, uploadError, handleFileSelect }
 }
 
+function formatCreationError(error) {
+  const detail = error instanceof Error && error.message
+    ? ` Detalle: ${error.message}`
+    : ''
+
+  return `No pudimos iniciar la generación.${detail} Revisá tu conexión e intentá de nuevo.`
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export function NewAdaptationPage() {
@@ -81,7 +89,7 @@ export function NewAdaptationPage() {
       })
       navigate(`/result/${adaptation.id}`, { state: { adaptation } })
     } catch (err) {
-      setGlobalError(err.message ?? 'Error al iniciar la generación.')
+      setGlobalError(formatCreationError(err))
     } finally {
       setGenerating(false)
     }
