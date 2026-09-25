@@ -8,11 +8,11 @@ import { Card } from '@/shared/ui/Card'
 import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
 import { Alert } from '@/shared/ui/Alert'
+import { ADAPTATION_POLL_POLICY } from './adaptationPolling'
 
 // ── Polling helpers ────────────────────────────────────────────────────────────
 
 const AGENT_SEQUENCE = ['orchestrator', 'researcher', 'context', 'generator', 'critic']
-const POLL_INTERVAL_MS = 2_000
 
 function usePipelineAgent(status) {
   const [currentAgent, setCurrentAgent] = useState(AGENT_SEQUENCE[0])
@@ -40,23 +40,38 @@ function useAdaptationResult(id, initialAdaptation) {
   const [adaptation, setAdaptation] = useState(initialAdaptation)
   const [loading, setLoading] = useState(!initialAdaptation)
   const [error, setError] = useState(null)
+  const [pollRun, setPollRun] = useState(0)
 
   useEffect(() => {
-    let ignore = false
+    let active = true
     let timeoutId
+    let activeStatusController
+    let attempts = 0
 
     const loadFullAdaptation = async () => {
       const fullAdaptation = await adaptationsApi.get(id)
-      if (!ignore) {
+      if (active) {
         setAdaptation(fullAdaptation)
       }
       return fullAdaptation
     }
 
+    const scheduleNextPoll = () => {
+      timeoutId = setTimeout(pollStatus, ADAPTATION_POLL_POLICY.intervalMs)
+    }
+
     const pollStatus = async () => {
+      if (!active) return
+
+      const controller = new AbortController()
+      activeStatusController = controller
+      attempts += 1
+
       try {
-        const statusUpdate = await adaptationsApi.getStatus(id)
-        if (ignore) return
+        const statusUpdate = await adaptationsApi.getStatus(id, {
+          signal: controller.signal,
+        })
+        if (!active) return
 
         setError(null)
         setAdaptation((prev) => ({ ...prev, ...statusUpdate }))
@@ -66,39 +81,61 @@ function useAdaptationResult(id, initialAdaptation) {
           return
         }
 
-        timeoutId = setTimeout(pollStatus, POLL_INTERVAL_MS)
+        if (attempts >= ADAPTATION_POLL_POLICY.maxAttempts) {
+          setError(
+            'Se agotó el tiempo de espera para completar la adaptación. Reintenta la consulta o vuelve al historial.'
+          )
+          return
+        }
+
+        scheduleNextPoll()
       } catch (err) {
-        if (!ignore) setError(err.message ?? 'Error al consultar el estado de la adaptación.')
+        if (active) {
+          setError(err.message ?? 'Error al consultar el estado de la adaptación.')
+        }
       } finally {
-        if (!ignore) setLoading(false)
+        if (activeStatusController === controller) {
+          activeStatusController = undefined
+        }
+        if (active) setLoading(false)
       }
     }
 
     if (initialAdaptation && !isTerminalStatus(initialAdaptation.status)) {
-      timeoutId = setTimeout(pollStatus, POLL_INTERVAL_MS)
+      if (pollRun > 0) {
+        pollStatus()
+      } else {
+        scheduleNextPoll()
+      }
     } else {
       loadFullAdaptation()
         .then((fullAdaptation) => {
-          if (!ignore && !isTerminalStatus(fullAdaptation.status)) {
-            timeoutId = setTimeout(pollStatus, POLL_INTERVAL_MS)
+          if (active && !isTerminalStatus(fullAdaptation.status)) {
+            scheduleNextPoll()
           }
-          if (!ignore) setError(null)
+          if (active) setError(null)
         })
         .catch((err) => {
-          if (!ignore) setError(err.message ?? 'Error al cargar la adaptación.')
+          if (active) setError(err.message ?? 'Error al cargar la adaptación.')
         })
         .finally(() => {
-          if (!ignore) setLoading(false)
+          if (active) setLoading(false)
         })
     }
 
     return () => {
-      ignore = true
+      active = false
       clearTimeout(timeoutId)
+      activeStatusController?.abort()
     }
-  }, [id, initialAdaptation])
+  }, [id, initialAdaptation, pollRun])
 
-  return { adaptation, loading, error }
+  const retryPolling = () => {
+    setError(null)
+    setPollRun((currentRun) => currentRun + 1)
+  }
+
+  return { adaptation, loading, error, retryPolling }
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -139,7 +176,10 @@ export function ResultPage() {
   const { id } = useParams()
   const { state } = useLocation()
 
-  const { adaptation, loading, error } = useAdaptationResult(id, state?.adaptation ?? null)
+  const { adaptation, loading, error, retryPolling } = useAdaptationResult(
+    id,
+    state?.adaptation ?? null
+  )
   const { currentAgent } = usePipelineAgent(adaptation?.status)
 
   if (loading && !adaptation) {
@@ -174,7 +214,15 @@ export function ResultPage() {
 
       {error && (
         <Alert variant="error" title="No se pudo actualizar el estado">
-          {error}
+          <p>{error}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button variant="secondary" size="sm" onClick={retryPolling}>
+              Reintentar consulta
+            </Button>
+            <Link to="/history" className="btn-ghost text-sm">
+              Ver historial
+            </Link>
+          </div>
         </Alert>
       )}
 
@@ -199,11 +247,14 @@ export function ResultPage() {
       {adaptation.status === 'failed' && (
         <Alert variant="error" title="Error en la generación">
           {adaptation.error ?? 'Ocurrió un error durante el procesamiento.'}
-          <div className="mt-3">
+          <div className="mt-3 flex flex-wrap gap-2">
             <Link to="/new">
               <Button variant="secondary" size="sm" leftIcon={<RefreshCw className="w-4 h-4" />}>
                 Intentar nuevamente
               </Button>
+            </Link>
+            <Link to="/history" className="btn-ghost text-sm">
+              Ver historial
             </Link>
           </div>
         </Alert>
