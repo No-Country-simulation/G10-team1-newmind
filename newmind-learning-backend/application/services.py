@@ -13,11 +13,11 @@ from application.repositories import (
     DocumentRepository,
     utc_now,
 )
+from ingestion.loaders import SUPPORTED_FORMATS
 from models.schemas import SolicitudAdaptacion
 
 
 MAX_DOCUMENT_SIZE = 20 * 1024 * 1024
-SUPPORTED_DOCUMENT_TYPES = {"pdf", "md", "txt"}
 
 
 class DocumentValidationError(ValueError):
@@ -68,20 +68,20 @@ class DocumentService:
 
     def upload(self, filename: str, content: bytes, content_type: str) -> DocumentRecord:
         safe_filename = sanitize_filename(filename)
-        extension = Path(safe_filename).suffix.lower().lstrip(".")
-        if extension not in SUPPORTED_DOCUMENT_TYPES:
+        suffix = Path(safe_filename).suffix.lower()
+        if suffix not in SUPPORTED_FORMATS:
             raise DocumentValidationError("Unsupported document type. Allowed types: PDF, MD, TXT.")
+        extension = SUPPORTED_FORMATS[suffix].value
         if len(content) > MAX_DOCUMENT_SIZE:
             raise DocumentValidationError("Document exceeds the 20 MB size limit.")
         if not content:
             raise DocumentValidationError("Document must not be empty.")
 
         try:
-            extracted_text = self.loader.extract_from_bytes(safe_filename, content)
+            normalized_document = self.loader.extract_from_bytes(safe_filename, content)
         except Exception as exc:
             raise DocumentProcessingError("Document content could not be extracted.") from exc
-        if not extracted_text.strip():
-            raise DocumentValidationError("Document does not contain extractable text.")
+        extracted_text = normalized_document.text
 
         record = self.repository.create(
             title=Path(safe_filename).stem,
