@@ -13,11 +13,23 @@ from application.repositories import (
     DocumentRepository,
     utc_now,
 )
-from ingestion.loaders import SUPPORTED_FORMATS
+from ingestion.loaders import (
+    SUPPORTED_FORMATS,
+    CorruptPdfError,
+    EmptyDocumentError,
+    InvalidTextEncodingError,
+    PdfNoExtractableTextError,
+)
 from models.schemas import SolicitudAdaptacion
 
 
 MAX_DOCUMENT_SIZE = 20 * 1024 * 1024
+INGESTION_ERROR_MESSAGES = {
+    EmptyDocumentError: "Document must not be empty.",
+    InvalidTextEncodingError: "Document must contain valid UTF-8 text.",
+    CorruptPdfError: "PDF document is corrupt.",
+    PdfNoExtractableTextError: "PDF document contains no extractable text.",
+}
 
 
 class DocumentValidationError(ValueError):
@@ -78,6 +90,8 @@ class DocumentService:
 
         try:
             normalized_document = self.loader.extract_from_bytes(safe_filename, content)
+        except tuple(INGESTION_ERROR_MESSAGES) as exc:
+            raise DocumentValidationError(INGESTION_ERROR_MESSAGES[type(exc)]) from exc
         except Exception as exc:
             raise DocumentProcessingError("Document content could not be extracted.") from exc
         record = self.repository.create(
