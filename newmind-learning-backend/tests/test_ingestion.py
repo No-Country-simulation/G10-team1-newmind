@@ -93,21 +93,24 @@ def test_text_normalization_is_deterministic_and_keeps_trace_out_of_text():
     ],
 )
 def test_text_inputs_raise_typed_stable_errors(filename, content, error_type, message):
-    with pytest.raises(error_type, match=f"^{message}$"):
+    with pytest.raises(error_type) as error:
         doc_loader.extract_from_bytes(filename, content)
+
+    assert str(error.value) == message
 
 
 def test_corrupt_pdf_raises_typed_stable_error():
-    with pytest.raises(CorruptPdfError, match="^Corrupt PDF: corrupt.pdf$"):
+    with pytest.raises(CorruptPdfError) as error:
         doc_loader.extract_from_file(FIXTURES / "corrupt.pdf")
+
+    assert str(error.value) == "Corrupt PDF: corrupt.pdf"
 
 
 def test_pdf_without_extractable_text_raises_typed_stable_error():
-    with pytest.raises(
-        PdfNoExtractableTextError,
-        match="^PDF contains no extractable text: blank.pdf$",
-    ):
+    with pytest.raises(PdfNoExtractableTextError) as error:
         doc_loader.extract_from_file(FIXTURES / "blank.pdf")
+
+    assert str(error.value) == "PDF contains no extractable text: blank.pdf"
 
 
 def test_pdf_fallback_discards_partial_primary_extraction(monkeypatch):
