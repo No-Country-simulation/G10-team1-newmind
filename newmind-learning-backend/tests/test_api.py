@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 
 from application.repositories import AdaptationRepository, DocumentRepository
 from application.services import AdaptationService, DocumentService
+from ingestion.loaders import DocumentSource, DocumentType, ExtractionTrace, NormalizedDocument
 from main import create_app
 from models.schemas import (
     AlmacenamientoOCI,
@@ -80,8 +81,13 @@ def adaptation_contract_schema_subset(schemas: dict[str, Any]) -> dict[str, Any]
 
 
 class FakeLoader:
-    def extract_from_bytes(self, filename: str, content: bytes) -> str:
-        return content.decode("utf-8")
+    def extract_from_bytes(self, filename: str, content: bytes) -> NormalizedDocument:
+        return NormalizedDocument(
+            text=content.decode("utf-8"),
+            source=DocumentSource(filename=filename),
+            type=DocumentType.TEXT,
+            trace=ExtractionTrace(extractor="fake"),
+        )
 
 
 class FakeChunker:
