@@ -8,6 +8,7 @@ from typing import List, Dict, Any, Optional
 import chromadb
 from chromadb.config import Settings as ChromaSettings
 from config.settings import settings
+from ingestion.chunker import RAG_METADATA_FIELDS
 
 logger = logging.getLogger(__name__)
 
@@ -29,14 +30,7 @@ class VectorStoreManager:
             return
 
         documents = [c["content"] for c in chunks]
-        metadatas = [
-            {
-                "source": c.get("source", "doc"),
-                "chunk_index": c.get("chunk_index", 0),
-                "total_chars": c.get("total_chars", len(c["content"]))
-            }
-            for c in chunks
-        ]
+        metadatas = [{field: chunk[field] for field in RAG_METADATA_FIELDS} for chunk in chunks]
         ids = [c["chunk_id"] for c in chunks]
 
         # Upsert en ChromaDB

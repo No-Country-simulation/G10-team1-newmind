@@ -6,11 +6,13 @@ from types import SimpleNamespace
 
 import pytest
 
-from ingestion.chunker import doc_chunker
+from ingestion.chunker import DocumentChunker
 from ingestion.loaders import (
     CorruptPdfError,
+    DocumentSource,
     DocumentType,
     EmptyDocumentError,
+    ExtractionTrace,
     InvalidTextEncodingError,
     NormalizedDocument,
     PdfNoExtractableTextError,
@@ -27,14 +29,125 @@ def test_supported_format_policy_is_exact_and_authoritative():
     assert tuple(SUPPORTED_FORMATS) == (".pdf", ".md", ".txt")
 
 
-def test_chunker_segmentation():
-    sample_text = "Technical paragraph. " * 30 + "\n\n" + "More details. " * 30
+def normalized_document(
+    text: str = "Technical source content",
+    *,
+    filename: str = "guide.md",
+    document_type: DocumentType = DocumentType.MARKDOWN,
+    extractor: str = "utf-8",
+    page_count: int | None = None,
+) -> NormalizedDocument:
+    return NormalizedDocument(
+        text=text,
+        source=DocumentSource(filename=filename),
+        type=document_type,
+        trace=ExtractionTrace(extractor=extractor, page_count=page_count),
+    )
 
-    chunks = doc_chunker.split_text(sample_text, source_id="test_doc")
 
-    assert len(chunks) >= 2
-    assert "chunk_id" in chunks[0]
-    assert "content" in chunks[0]
+def test_chunker_emits_deterministic_chunks_with_flat_rag_metadata():
+    document = normalized_document(
+        "Technical paragraph. " * 8,
+        filename="guide.pdf",
+        document_type=DocumentType.PDF,
+        extractor="pypdf",
+        page_count=3,
+    )
+    chunker = DocumentChunker(chunk_size=48, chunk_overlap=8)
+
+    first = chunker.split_document(document)
+    second = chunker.split_document(document)
+
+    assert first == second
+    assert len(first) >= 2
+    assert len({chunk["chunk_id"] for chunk in first}) == len(first)
+    assert all(
+        set(chunk) == {
+            "chunk_id",
+            "content",
+            "source_filename",
+            "document_type",
+            "extractor",
+            "page_count",
+            "chunk_index",
+            "chunk_count",
+            "chunk_length",
+        }
+        for chunk in first
+    )
+    assert all(chunk["source_filename"] == "guide.pdf" for chunk in first)
+    assert all(chunk["document_type"] == "pdf" for chunk in first)
+    assert all(chunk["extractor"] == "pypdf" for chunk in first)
+    assert all(chunk["page_count"] == 3 for chunk in first)
+    assert [chunk["chunk_index"] for chunk in first] == list(range(len(first)))
+    assert all(chunk["chunk_count"] == len(first) for chunk in first)
+    assert all(chunk["chunk_length"] == len(chunk["content"]) for chunk in first)
+
+
+def test_chunker_enforces_chunk_size_and_overlap():
+    chunker = DocumentChunker(chunk_size=10, chunk_overlap=3)
+
+    chunks = chunker.split_document(normalized_document("abcdefghijklmnopqrstuvwxyz"))
+
+    assert [chunk["content"] for chunk in chunks] == [
+        "abcdefghij",
+        "hijklmnopq",
+        "opqrstuvwx",
+        "vwxyz",
+    ]
+    assert all(chunk["chunk_length"] <= 10 for chunk in chunks)
+    assert all(
+        previous["content"][-3:] == current["content"][:3]
+        for previous, current in zip(chunks, chunks[1:])
+    )
+
+
+@pytest.mark.parametrize(
+    ("chunk_size", "chunk_overlap"),
+    [(0, 0), (-1, 0), (10, -1), (10, 10), (10, 11)],
+)
+def test_chunker_rejects_invalid_size_and_overlap(chunk_size: int, chunk_overlap: int):
+    with pytest.raises(ValueError) as error:
+        DocumentChunker(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+
+    assert str(error.value) == (
+        "chunk_size must be positive and chunk_overlap must be between 0 and chunk_size - 1"
+    )
+
+
+def test_vector_store_receives_the_flat_chunk_metadata(monkeypatch, tmp_path):
+    from config.settings import settings
+
+    monkeypatch.setattr(settings, "CHROMA_PERSIST_DIR", str(tmp_path / "chroma"))
+    from rag.vector_store import VectorStoreManager
+
+    class RecordingCollection:
+        def upsert(self, **payload):
+            self.payload = payload
+
+    chunk = DocumentChunker(chunk_size=100, chunk_overlap=10).split_document(
+        normalized_document()
+    )[0]
+    manager = object.__new__(VectorStoreManager)
+    manager.collection = RecordingCollection()
+
+    manager.add_chunks([chunk])
+
+    assert manager.collection.payload == {
+        "documents": ["Technical source content"],
+        "metadatas": [
+            {
+                "source_filename": "guide.md",
+                "document_type": "md",
+                "extractor": "utf-8",
+                "page_count": 0,
+                "chunk_index": 0,
+                "chunk_count": 1,
+                "chunk_length": 24,
+            }
+        ],
+        "ids": [chunk["chunk_id"]],
+    }
 
 
 @pytest.mark.parametrize(

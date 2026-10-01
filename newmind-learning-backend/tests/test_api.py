@@ -81,18 +81,26 @@ def adaptation_contract_schema_subset(schemas: dict[str, Any]) -> dict[str, Any]
 
 
 class FakeLoader:
+    def __init__(self) -> None:
+        self.document: NormalizedDocument | None = None
+
     def extract_from_bytes(self, filename: str, content: bytes) -> NormalizedDocument:
-        return NormalizedDocument(
+        self.document = NormalizedDocument(
             text=content.decode("utf-8"),
             source=DocumentSource(filename=filename),
             type=DocumentType.TEXT,
             trace=ExtractionTrace(extractor="fake"),
         )
+        return self.document
 
 
 class FakeChunker:
-    def split_text(self, text: str, source_id: str) -> list[dict[str, Any]]:
-        return [{"chunk_id": f"{source_id}-0", "content": text, "source": source_id}]
+    def __init__(self) -> None:
+        self.document: NormalizedDocument | None = None
+
+    def split_document(self, document: NormalizedDocument) -> list[dict[str, Any]]:
+        self.document = document
+        return [{"chunk_id": "stable-0", "content": document.text}]
 
 
 class FakeVectorStore:
@@ -244,6 +252,27 @@ def test_document_crud_and_filename_sanitization(api_context):
     assert client.get(f"/api/v1/documents/{document['id']}").json() == document
     assert client.delete(f"/api/v1/documents/{document['id']}").status_code == 204
     assert client.get(f"/api/v1/documents/{document['id']}").status_code == 404
+
+
+def test_document_service_passes_the_canonical_document_directly_and_preserves_content():
+    loader = FakeLoader()
+    chunker = FakeChunker()
+    vector_store = FakeVectorStore()
+    repository = DocumentRepository()
+    service = DocumentService(
+        repository,
+        loader=loader,
+        chunker=chunker,
+        vector_store=vector_store,
+        storage=FakeStorage(),
+    )
+
+    record = service.upload("guide.txt", b"Canonical content", "text/plain")
+
+    assert chunker.document is loader.document
+    assert record.content == loader.document.text
+    assert repository.get(record.id).content == "Canonical content"
+    assert vector_store.chunks == [{"chunk_id": "stable-0", "content": "Canonical content"}]
 
 
 @pytest.mark.parametrize("filename", ["source.exe", "source.json", "source.markdown"])

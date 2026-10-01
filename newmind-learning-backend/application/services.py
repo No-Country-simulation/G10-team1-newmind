@@ -71,7 +71,6 @@ class DocumentService:
         suffix = Path(safe_filename).suffix.lower()
         if suffix not in SUPPORTED_FORMATS:
             raise DocumentValidationError("Unsupported document type. Allowed types: PDF, MD, TXT.")
-        extension = SUPPORTED_FORMATS[suffix].value
         if len(content) > MAX_DOCUMENT_SIZE:
             raise DocumentValidationError("Document exceeds the 20 MB size limit.")
         if not content:
@@ -81,21 +80,19 @@ class DocumentService:
             normalized_document = self.loader.extract_from_bytes(safe_filename, content)
         except Exception as exc:
             raise DocumentProcessingError("Document content could not be extracted.") from exc
-        extracted_text = normalized_document.text
-
         record = self.repository.create(
             title=Path(safe_filename).stem,
             filename=safe_filename,
-            document_type=extension,
+            document_type=normalized_document.type.value,
             size=len(content),
-            content=extracted_text,
+            content=normalized_document.text,
             storage_object_id=safe_filename,
         )
         storage_object_id = f"{record.id}-{safe_filename}"
         record = self.repository.update_storage_object_id(record.id, storage_object_id)
 
         try:
-            chunks = self.chunker.split_text(extracted_text, source_id=f"document-{record.id}")
+            chunks = self.chunker.split_document(normalized_document)
             self.vector_store.add_chunks(chunks)
             self.storage.upload_raw_document(storage_object_id, content, content_type)
         except Exception as exc:
