@@ -84,7 +84,26 @@ def test_chunker_emits_deterministic_chunks_with_flat_rag_metadata():
     assert all(chunk["chunk_length"] == len(chunk["content"]) for chunk in first)
 
 
-def test_chunker_enforces_chunk_size_and_overlap():
+def test_chunker_keeps_short_text_in_one_chunk():
+    chunks = DocumentChunker(chunk_size=10, chunk_overlap=3).split_document(
+        normalized_document("short")
+    )
+
+    assert [chunk["content"] for chunk in chunks] == ["short"]
+
+
+def test_chunker_prefers_last_paragraph_boundary_within_size():
+    chunks = DocumentChunker(chunk_size=15, chunk_overlap=3).split_document(
+        normalized_document("alpha\n\nbravo\n\ncharlie")
+    )
+
+    assert [chunk["content"] for chunk in chunks] == [
+        "alpha\n\nbravo\n\n",
+        "o\n\ncharlie",
+    ]
+
+
+def test_chunker_hard_splits_oversized_paragraph_with_exact_overlap():
     chunker = DocumentChunker(chunk_size=10, chunk_overlap=3)
 
     chunks = chunker.split_document(normalized_document("abcdefghijklmnopqrstuvwxyz"))
@@ -100,6 +119,25 @@ def test_chunker_enforces_chunk_size_and_overlap():
         previous["content"][-3:] == current["content"][:3]
         for previous, current in zip(chunks, chunks[1:])
     )
+
+
+def test_chunker_ignores_paragraph_boundary_that_adds_no_new_content():
+    chunks = DocumentChunker(chunk_size=10, chunk_overlap=4).split_document(
+        normalized_document("12345678\n\nabcdefghijk")
+    )
+
+    assert [chunk["content"] for chunk in chunks[:2]] == [
+        "12345678\n\n",
+        "78\n\nabcdef",
+    ]
+
+
+def test_chunker_does_not_emit_terminal_overlap_only_chunk():
+    chunks = DocumentChunker(chunk_size=10, chunk_overlap=3).split_document(
+        normalized_document("abcdefghij")
+    )
+
+    assert [chunk["content"] for chunk in chunks] == ["abcdefghij"]
 
 
 @pytest.mark.parametrize(

@@ -36,10 +36,9 @@ class DocumentChunker:
         if not document.text:
             return []
 
-        step = self.chunk_size - self.chunk_overlap
         contents = [
-            document.text[start : start + self.chunk_size]
-            for start in range(0, len(document.text), step)
+            document.text[start:end]
+            for start, end in self._plan_ranges(document.text)
         ]
         document_digest = self._document_digest(document)
         chunk_count = len(contents)
@@ -58,6 +57,33 @@ class DocumentChunker:
             }
             for index, content in enumerate(contents)
         ]
+
+    def _plan_ranges(self, text: str) -> list[tuple[int, int]]:
+        """Plan bounded ranges, preferring usable paragraph endpoints."""
+        ranges: list[tuple[int, int]] = []
+        text_length = len(text)
+        start = 0
+        previous_end = 0
+
+        while start < text_length:
+            hard_end = min(start + self.chunk_size, text_length)
+            end = hard_end
+
+            if hard_end < text_length:
+                separator = text.rfind("\n\n", start, hard_end)
+                boundary_end = separator + 2
+                minimum_end = max(previous_end, start + self.chunk_overlap)
+                if separator >= 0 and boundary_end > minimum_end:
+                    end = boundary_end
+
+            ranges.append((start, end))
+            if end == text_length:
+                break
+
+            previous_end = end
+            start = end - self.chunk_overlap
+
+        return ranges
 
     @staticmethod
     def _document_digest(document: NormalizedDocument) -> str:
