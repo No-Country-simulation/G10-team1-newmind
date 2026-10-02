@@ -24,13 +24,13 @@ class RAGRetriever:
         context_blocks = []
         scores = []
         for i, chunk in enumerate(chunks):
-            scores.append(chunk.get("similarity_score", 0.8))
+            scores.append(chunk["similarity_score"])
             context_blocks.append(
                 f"[Fragmento {i+1} | ID: {chunk['chunk_id']}]\n{chunk['content']}"
             )
 
         combined_context = "\n\n".join(context_blocks)
-        avg_score = round(sum(scores) / len(scores), 3) if scores else 0.85
+        avg_score = round(sum(scores) / len(scores), 3)
 
         return combined_context, chunks, avg_score
 
