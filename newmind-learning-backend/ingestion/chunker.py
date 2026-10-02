@@ -1,78 +1,102 @@
-"""
-Módulo de Chunking y Segmentación de Documentos.
-Divide textos largos en fragmentos contextuales (chunks) con solapamiento y metadatos.
-"""
-from typing import List, Dict, Any, Optional
+"""Deterministic chunking of canonical normalized documents."""
+
+from __future__ import annotations
+
+from hashlib import sha256
+from typing import Any
+
 from config.settings import settings
+from ingestion.loaders import NormalizedDocument
+
+
+RAG_METADATA_FIELDS = (
+    "source_filename",
+    "document_type",
+    "extractor",
+    "page_count",
+    "chunk_index",
+    "chunk_count",
+    "chunk_length",
+)
+
 
 class DocumentChunker:
-    def __init__(self, chunk_size: Optional[int] = None, chunk_overlap: Optional[int] = None):
-        self.chunk_size = chunk_size or settings.DEFAULT_CHUNK_SIZE
-        self.chunk_overlap = chunk_overlap or settings.DEFAULT_CHUNK_OVERLAP
+    def __init__(self, chunk_size: int | None = None, chunk_overlap: int | None = None):
+        self.chunk_size = settings.DEFAULT_CHUNK_SIZE if chunk_size is None else chunk_size
+        self.chunk_overlap = (
+            settings.DEFAULT_CHUNK_OVERLAP if chunk_overlap is None else chunk_overlap
+        )
+        if self.chunk_size <= 0 or not 0 <= self.chunk_overlap < self.chunk_size:
+            raise ValueError(
+                "chunk_size must be positive and chunk_overlap must be between 0 and chunk_size - 1"
+            )
 
-    def split_text(self, text: str, source_id: str = "documento") -> List[Dict[str, Any]]:
-        """
-        Segmenta el texto de manera recursiva respetando párrafos, oraciones y palabras.
-        Retorna una lista de diccionarios con contenido y metadatos de trazabilidad.
-        """
-        if not text or not text.strip():
+    def split_document(self, document: NormalizedDocument) -> list[dict[str, Any]]:
+        """Split one normalized document into bounded, overlapping RAG chunks."""
+        if not document.text:
             return []
 
-        separators = ["\n\n", "\n", ". ", " ", ""]
-        raw_chunks = self._recursive_split(text, separators, self.chunk_size)
-        
-        # Combinar fragmentos pequeños y aplicar solapamiento
-        chunks_with_overlap = []
-        current_chunk = ""
-        
-        for fragment in raw_chunks:
-            if len(current_chunk) + len(fragment) <= self.chunk_size:
-                current_chunk += fragment
-            else:
-                if current_chunk.strip():
-                    chunks_with_overlap.append(current_chunk.strip())
-                # Iniciar nuevo chunk reteniendo el solapamiento del anterior
-                overlap_text = current_chunk[-self.chunk_overlap:] if len(current_chunk) > self.chunk_overlap else current_chunk
-                current_chunk = overlap_text + fragment
+        contents = [
+            document.text[start:end]
+            for start, end in self._plan_ranges(document.text)
+        ]
+        document_digest = self._document_digest(document)
+        chunk_count = len(contents)
 
-        if current_chunk.strip():
-            chunks_with_overlap.append(current_chunk.strip())
+        return [
+            {
+                "chunk_id": f"{document_digest}-chunk-{index:04d}",
+                "content": content,
+                "source_filename": document.source.filename,
+                "document_type": document.type.value,
+                "extractor": document.trace.extractor,
+                "page_count": document.trace.page_count or 0,
+                "chunk_index": index,
+                "chunk_count": chunk_count,
+                "chunk_length": len(content),
+            }
+            for index, content in enumerate(contents)
+        ]
 
-        # Enriquecer con metadatos
-        result = []
-        for idx, chunk_content in enumerate(chunks_with_overlap):
-            result.append({
-                "chunk_id": f"{source_id}_chunk_{idx:03d}",
-                "source": source_id,
-                "chunk_index": idx,
-                "total_chars": len(chunk_content),
-                "content": chunk_content
-            })
+    def _plan_ranges(self, text: str) -> list[tuple[int, int]]:
+        """Plan bounded ranges, preferring usable paragraph endpoints."""
+        ranges: list[tuple[int, int]] = []
+        text_length = len(text)
+        start = 0
+        previous_end = 0
 
-        return result
+        while start < text_length:
+            hard_end = min(start + self.chunk_size, text_length)
+            end = hard_end
 
-    def _recursive_split(self, text: str, separators: List[str], max_size: int) -> List[str]:
-        if len(text) <= max_size or not separators:
-            return [text]
+            if hard_end < text_length:
+                separator = text.rfind("\n\n", start, hard_end)
+                boundary_end = separator + 2
+                minimum_end = max(previous_end, start + self.chunk_overlap)
+                if separator >= 0 and boundary_end > minimum_end:
+                    end = boundary_end
 
-        sep = separators[0]
-        remaining_seps = separators[1:]
-        
-        if sep == "":
-            # División por caracteres directa si no quedan separadores
-            return [text[i:i+max_size] for i in range(0, len(text), max_size)]
+            ranges.append((start, end))
+            if end == text_length:
+                break
 
-        splits = text.split(sep)
-        result = []
-        for s in splits:
-            if not s:
-                continue
-            item = s + sep
-            if len(item) <= max_size:
-                result.append(item)
-            else:
-                result.extend(self._recursive_split(item, remaining_seps, max_size))
+            previous_end = end
+            start = end - self.chunk_overlap
 
-        return result
+        return ranges
+
+    @staticmethod
+    def _document_digest(document: NormalizedDocument) -> str:
+        canonical_identity = "\0".join(
+            (
+                document.source.filename,
+                document.type.value,
+                document.trace.extractor,
+                str(document.trace.page_count or 0),
+                document.text,
+            )
+        )
+        return sha256(canonical_identity.encode("utf-8")).hexdigest()[:16]
+
 
 doc_chunker = DocumentChunker()

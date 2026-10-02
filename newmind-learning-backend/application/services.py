@@ -13,11 +13,23 @@ from application.repositories import (
     DocumentRepository,
     utc_now,
 )
+from ingestion.loaders import (
+    SUPPORTED_FORMATS,
+    CorruptPdfError,
+    EmptyDocumentError,
+    InvalidTextEncodingError,
+    PdfNoExtractableTextError,
+)
 from models.schemas import SolicitudAdaptacion
 
 
 MAX_DOCUMENT_SIZE = 20 * 1024 * 1024
-SUPPORTED_DOCUMENT_TYPES = {"pdf", "md", "txt"}
+INGESTION_ERROR_MESSAGES = {
+    EmptyDocumentError: "Document must not be empty.",
+    InvalidTextEncodingError: "Document must contain valid UTF-8 text.",
+    CorruptPdfError: "PDF document is corrupt.",
+    PdfNoExtractableTextError: "PDF document contains no extractable text.",
+}
 
 
 class DocumentValidationError(ValueError):
@@ -68,8 +80,8 @@ class DocumentService:
 
     def upload(self, filename: str, content: bytes, content_type: str) -> DocumentRecord:
         safe_filename = sanitize_filename(filename)
-        extension = Path(safe_filename).suffix.lower().lstrip(".")
-        if extension not in SUPPORTED_DOCUMENT_TYPES:
+        suffix = Path(safe_filename).suffix.lower()
+        if suffix not in SUPPORTED_FORMATS:
             raise DocumentValidationError("Unsupported document type. Allowed types: PDF, MD, TXT.")
         if len(content) > MAX_DOCUMENT_SIZE:
             raise DocumentValidationError("Document exceeds the 20 MB size limit.")
@@ -77,25 +89,24 @@ class DocumentService:
             raise DocumentValidationError("Document must not be empty.")
 
         try:
-            extracted_text = self.loader.extract_from_bytes(safe_filename, content)
+            normalized_document = self.loader.extract_from_bytes(safe_filename, content)
+        except tuple(INGESTION_ERROR_MESSAGES) as exc:
+            raise DocumentValidationError(INGESTION_ERROR_MESSAGES[type(exc)]) from exc
         except Exception as exc:
             raise DocumentProcessingError("Document content could not be extracted.") from exc
-        if not extracted_text.strip():
-            raise DocumentValidationError("Document does not contain extractable text.")
-
         record = self.repository.create(
             title=Path(safe_filename).stem,
             filename=safe_filename,
-            document_type=extension,
+            document_type=normalized_document.type.value,
             size=len(content),
-            content=extracted_text,
+            content=normalized_document.text,
             storage_object_id=safe_filename,
         )
         storage_object_id = f"{record.id}-{safe_filename}"
         record = self.repository.update_storage_object_id(record.id, storage_object_id)
 
         try:
-            chunks = self.chunker.split_text(extracted_text, source_id=f"document-{record.id}")
+            chunks = self.chunker.split_document(normalized_document)
             self.vector_store.add_chunks(chunks)
             self.storage.upload_raw_document(storage_object_id, content, content_type)
         except Exception as exc:

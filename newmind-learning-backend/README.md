@@ -227,6 +227,20 @@ el cliente utiliza `data/oci_local_storage/` como emulación local.
 | `TOP_K_RETRIEVAL` | `4` | Máximo solicitado para recuperación semántica. |
 | `EMBEDDING_MODEL` | `all-MiniLM-L6-v2` | Está declarada, pero actualmente **no se conecta** a la función de embeddings de ChromaDB. |
 
+`DEFAULT_CHUNK_SIZE` y `DEFAULT_CHUNK_OVERLAP` se miden con el conteo de
+caracteres de Python (`len` y cortes de cadenas), no en bytes, tokens ni grafemas.
+Cada fragmento contiene como máximo `DEFAULT_CHUNK_SIZE` caracteres. Dentro de
+esa ventana, el fragmentador prefiere el último separador de párrafo completo
+(`\n\n`) que aporte contenido nuevo; el separador queda incluido al final del
+fragmento. El fragmento siguiente comienza exactamente
+`DEFAULT_CHUNK_OVERLAP` caracteres antes del extremo seleccionado.
+
+Si no cabe un separador de párrafo utilizable —incluidos los párrafos que por
+sí solos superan el tamaño configurado—, el extremo se fija mediante un corte
+duro de `DEFAULT_CHUNK_SIZE` caracteres. El último fragmento se emite una sola
+vez con todo el contenido restante: nunca se agrega un fragmento terminal que
+contenga únicamente solapamiento ya emitido.
+
 ## Docker
 
 El archivo `docker-compose.yml` de la raíz define solo los servicios actuales del

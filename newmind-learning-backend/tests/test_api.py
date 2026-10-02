@@ -9,6 +9,14 @@ from fastapi.testclient import TestClient
 
 from application.repositories import AdaptationRepository, DocumentRepository
 from application.services import AdaptationService, DocumentService
+from ingestion.chunker import DocumentChunker
+from ingestion.loaders import (
+    DocumentSource,
+    DocumentType,
+    ExtractionTrace,
+    NormalizedDocument,
+    doc_loader,
+)
 from main import create_app
 from models.schemas import (
     AlmacenamientoOCI,
@@ -25,6 +33,7 @@ CONTRACT_FIXTURE_PATH = (
 CONTRACT_SCHEMA_FIXTURE_PATH = (
     Path(__file__).resolve().parents[1] / "contracts" / "openapi-v1-adaptation-response.schema.json"
 )
+INGESTION_FIXTURES = Path(__file__).parent / "fixtures" / "ingestion"
 OFFICIAL_RESPONSE_BLOCKS = {
     "status",
     "metadatos",
@@ -80,13 +89,26 @@ def adaptation_contract_schema_subset(schemas: dict[str, Any]) -> dict[str, Any]
 
 
 class FakeLoader:
-    def extract_from_bytes(self, filename: str, content: bytes) -> str:
-        return content.decode("utf-8")
+    def __init__(self) -> None:
+        self.document: NormalizedDocument | None = None
+
+    def extract_from_bytes(self, filename: str, content: bytes) -> NormalizedDocument:
+        self.document = NormalizedDocument(
+            text=content.decode("utf-8"),
+            source=DocumentSource(filename=filename),
+            type=DocumentType.TEXT,
+            trace=ExtractionTrace(extractor="fake"),
+        )
+        return self.document
 
 
 class FakeChunker:
-    def split_text(self, text: str, source_id: str) -> list[dict[str, Any]]:
-        return [{"chunk_id": f"{source_id}-0", "content": text, "source": source_id}]
+    def __init__(self) -> None:
+        self.document: NormalizedDocument | None = None
+
+    def split_document(self, document: NormalizedDocument) -> list[dict[str, Any]]:
+        self.document = document
+        return [{"chunk_id": "stable-0", "content": document.text}]
 
 
 class FakeVectorStore:
@@ -99,6 +121,17 @@ class FakeVectorStore:
 
 class FakeStorage:
     def upload_raw_document(self, filename: str, content: bytes, content_type: str) -> dict[str, str]:
+        return {"status": "emulated_local", "object_id": filename}
+
+
+class RecordingStorage:
+    def __init__(self) -> None:
+        self.uploads: list[dict[str, Any]] = []
+
+    def upload_raw_document(self, filename: str, content: bytes, content_type: str) -> dict[str, str]:
+        self.uploads.append(
+            {"filename": filename, "content": content, "content_type": content_type}
+        )
         return {"status": "emulated_local", "object_id": filename}
 
 
@@ -146,6 +179,23 @@ def api_context():
     adaptations = AdaptationService(documents, AdaptationRepository(), engine=engine)
     with TestClient(create_app(documents, adaptations)) as client:
         yield client, engine
+
+
+@pytest.fixture
+def real_ingestion_api_context():
+    repository = DocumentRepository()
+    vector_store = FakeVectorStore()
+    storage = RecordingStorage()
+    documents = DocumentService(
+        repository,
+        loader=doc_loader,
+        chunker=DocumentChunker(chunk_size=64, chunk_overlap=8),
+        vector_store=vector_store,
+        storage=storage,
+    )
+    adaptations = AdaptationService(documents, AdaptationRepository(), engine=FakeEngine())
+    with TestClient(create_app(documents, adaptations)) as client:
+        yield client, repository, vector_store, storage
 
 
 def upload_document(client: TestClient, filename: str = "source.txt") -> dict[str, Any]:
@@ -238,6 +288,122 @@ def test_document_crud_and_filename_sanitization(api_context):
     assert client.get(f"/api/v1/documents/{document['id']}").json() == document
     assert client.delete(f"/api/v1/documents/{document['id']}").status_code == 204
     assert client.get(f"/api/v1/documents/{document['id']}").status_code == 404
+
+
+def test_document_service_passes_the_canonical_document_directly_and_preserves_content():
+    loader = FakeLoader()
+    chunker = FakeChunker()
+    vector_store = FakeVectorStore()
+    repository = DocumentRepository()
+    service = DocumentService(
+        repository,
+        loader=loader,
+        chunker=chunker,
+        vector_store=vector_store,
+        storage=FakeStorage(),
+    )
+
+    record = service.upload("guide.txt", b"Canonical content", "text/plain")
+
+    assert chunker.document is loader.document
+    assert record.content == loader.document.text
+    assert repository.get(record.id).content == "Canonical content"
+    assert vector_store.chunks == [{"chunk_id": "stable-0", "content": "Canonical content"}]
+
+
+@pytest.mark.parametrize(
+    ("filename", "content_type", "expected_type", "expected_text", "expected_page_count"),
+    [
+        ("sample.pdf", "application/pdf", "pdf", "Normalized PDF content.", 1),
+        ("sample.md", "text/markdown", "md", "# Café\n\nNormalized Markdown fixture.", 0),
+        ("sample.txt", "text/plain", "txt", "Plain text fixture.", 0),
+    ],
+)
+def test_http_upload_uses_real_ingestion_chunking_and_vector_metadata(
+    real_ingestion_api_context,
+    filename,
+    content_type,
+    expected_type,
+    expected_text,
+    expected_page_count,
+):
+    client, repository, vector_store, storage = real_ingestion_api_context
+    content = (INGESTION_FIXTURES / filename).read_bytes()
+
+    response = client.post(
+        "/api/v1/documents",
+        files={"file": (filename, content, content_type)},
+    )
+
+    assert response.status_code == 201
+    record = repository.get(response.json()["id"])
+    assert record is not None
+    assert record.content == expected_text
+    assert record.type == expected_type
+    assert len(vector_store.chunks) == 1
+    chunk = vector_store.chunks[0]
+    assert chunk["content"] == expected_text
+    assert chunk["source_filename"] == filename
+    assert chunk["document_type"] == expected_type
+    if expected_type == "pdf":
+        assert chunk["extractor"] in {"pypdf", "pymupdf"}
+    else:
+        assert chunk["extractor"] == "utf-8"
+    assert chunk["page_count"] == expected_page_count
+    assert chunk["chunk_index"] == 0
+    assert chunk["chunk_count"] == 1
+    assert chunk["chunk_length"] == len(expected_text)
+    assert storage.uploads == [
+        {
+            "filename": f"{record.id}-{filename}",
+            "content": content,
+            "content_type": content_type,
+        }
+    ]
+
+
+@pytest.mark.parametrize(
+    ("filename", "content", "expected_detail"),
+    [
+        (
+            "source.exe",
+            b"content",
+            "Unsupported document type. Allowed types: PDF, MD, TXT.",
+        ),
+        ("empty.txt", b"", "Document must not be empty."),
+        ("whitespace.txt", b" \r\n\t", "Document must not be empty."),
+        ("whitespace.md", b"\n\n  \t", "Document must not be empty."),
+        ("invalid.txt", b"\xff", "Document must contain valid UTF-8 text."),
+        (
+            "corrupt.pdf",
+            (INGESTION_FIXTURES / "corrupt.pdf").read_bytes(),
+            "PDF document is corrupt.",
+        ),
+        (
+            "blank.pdf",
+            (INGESTION_FIXTURES / "blank.pdf").read_bytes(),
+            "PDF document contains no extractable text.",
+        ),
+    ],
+)
+def test_http_upload_returns_stable_422_without_partial_state(
+    real_ingestion_api_context,
+    filename,
+    content,
+    expected_detail,
+):
+    client, repository, vector_store, storage = real_ingestion_api_context
+
+    response = client.post(
+        "/api/v1/documents",
+        files={"file": (filename, content, "application/octet-stream")},
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": expected_detail}
+    assert repository.list() == []
+    assert vector_store.chunks == []
+    assert storage.uploads == []
 
 
 @pytest.mark.parametrize("filename", ["source.exe", "source.json", "source.markdown"])

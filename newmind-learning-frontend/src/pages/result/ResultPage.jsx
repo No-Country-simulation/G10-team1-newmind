@@ -10,6 +10,7 @@ import { Card } from '@/shared/ui/Card'
 import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
 import { Alert } from '@/shared/ui/Alert'
+import { ADAPTATION_POLL_POLICY } from './adaptationPolling'
 
 // ── Polling helpers ────────────────────────────────────────────────────────────
 
@@ -20,9 +21,6 @@ const AGENT_SEQUENCE = [
   'generator',
   'critic',
 ]
-
-const POLL_INTERVAL_MS = 2_000
-const MAX_POLL_ATTEMPTS = 30
 
 /**
  * Provides a visual estimate of the pipeline stage while the backend
@@ -61,45 +59,45 @@ function useAdaptationResult(id, initialAdaptation) {
   const [adaptation, setAdaptation] = useState(initialAdaptation)
   const [loading, setLoading] = useState(!initialAdaptation)
   const [error, setError] = useState(null)
+  const [pollRun, setPollRun] = useState(0)
 
   useEffect(() => {
-    let ignore = false
+    let active = true
     let timeoutId
-    let pollAttempts = 0
+    let activeStatusController
+    let attempts = 0
 
     const loadFullAdaptation = async () => {
       const fullAdaptation = await adaptationsApi.get(id)
 
-      if (!ignore) {
+      if (active) {
         setAdaptation(fullAdaptation)
       }
 
       return fullAdaptation
     }
 
-    const stopPollingBecauseOfTimeout = () => {
-      if (!ignore) {
-        setError(
-          'La generación está tardando más de lo esperado. ' +
-          'Puedes volver a consultar el resultado desde el historial.'
-        )
-      }
+    const scheduleNextPoll = () => {
+      timeoutId = setTimeout(
+        pollStatus,
+        ADAPTATION_POLL_POLICY.intervalMs
+      )
     }
 
     const pollStatus = async () => {
-      if (ignore) return
+      if (!active) return
 
-      pollAttempts += 1
+      const controller = new AbortController()
 
-      if (pollAttempts > MAX_POLL_ATTEMPTS) {
-        stopPollingBecauseOfTimeout()
-        return
-      }
+      activeStatusController = controller
+      attempts += 1
 
       try {
-        const statusUpdate = await adaptationsApi.getStatus(id)
+        const statusUpdate = await adaptationsApi.getStatus(id, {
+          signal: controller.signal,
+        })
 
-        if (ignore) return
+        if (!active) return
 
         setError(null)
 
@@ -113,62 +111,94 @@ function useAdaptationResult(id, initialAdaptation) {
           return
         }
 
-        timeoutId = setTimeout(pollStatus, POLL_INTERVAL_MS)
+        if (attempts >= ADAPTATION_POLL_POLICY.maxAttempts) {
+          setError(
+            'Se agotó el tiempo de espera para completar la adaptación. ' +
+            'Reintenta la consulta o vuelve al historial.'
+          )
+          return
+        }
+
+        scheduleNextPoll()
       } catch (err) {
-        if (!ignore) {
+        if (active) {
           setError(
             err.message ??
-            'Error al consultar el estado de la adaptación.'
+              'Error al consultar el estado de la adaptación.'
           )
         }
       } finally {
-        if (!ignore) {
+        if (activeStatusController === controller) {
+          activeStatusController = undefined
+        }
+
+        if (active) {
           setLoading(false)
         }
       }
     }
 
-    if (initialAdaptation && !isTerminalStatus(initialAdaptation.status)) {
-      timeoutId = setTimeout(pollStatus, POLL_INTERVAL_MS)
+    if (
+      initialAdaptation &&
+      !isTerminalStatus(initialAdaptation.status)
+    ) {
+      if (pollRun > 0) {
+        pollStatus()
+      } else {
+        scheduleNextPoll()
+      }
     } else {
       loadFullAdaptation()
         .then((fullAdaptation) => {
           if (
-            !ignore &&
+            active &&
             !isTerminalStatus(fullAdaptation.status)
           ) {
-            timeoutId = setTimeout(pollStatus, POLL_INTERVAL_MS)
+            scheduleNextPoll()
           }
 
-          if (!ignore) {
+          if (active) {
             setError(null)
           }
         })
         .catch((err) => {
-          if (!ignore) {
+          if (active) {
             setError(
-              err.message ??
-              'Error al cargar la adaptación.'
+              err.message ?? 'Error al cargar la adaptación.'
             )
           }
         })
         .finally(() => {
-          if (!ignore) {
+          if (active) {
             setLoading(false)
           }
         })
     }
 
     return () => {
-      ignore = true
+      active = false
+
       clearTimeout(timeoutId)
+
+      activeStatusController?.abort()
     }
-  }, [id, initialAdaptation])
+  }, [id, initialAdaptation, pollRun])
+
+  /**
+   * Reinicia el ciclo de polling desde cero.
+   * Al incrementar pollRun, el efecto se ejecuta nuevamente
+   * y se reinicia el contador de intentos.
+   */
+  const retryPolling = () => {
+    setError(null)
+    setPollRun((currentRun) => currentRun + 1)
+  }
 
   return {
     adaptation,
     loading,
     error,
+    retryPolling,
   }
 }
 
@@ -225,6 +255,7 @@ export function ResultPage() {
     adaptation,
     loading,
     error,
+    retryPolling,
   } = useAdaptationResult(
     id,
     state?.adaptation ?? null
@@ -282,16 +313,22 @@ export function ResultPage() {
           variant="error"
           title="No se pudo actualizar el estado"
         >
-          {error}
+          <p>{error}</p>
 
-          <div className="mt-3">
-            <Link to="/history">
-              <Button
-                variant="secondary"
-                size="sm"
-              >
-                Consultar historial
-              </Button>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={retryPolling}
+            >
+              Reintentar consulta
+            </Button>
+
+            <Link
+              to="/history"
+              className="btn-ghost text-sm"
+            >
+              Ver historial
             </Link>
           </div>
         </Alert>
@@ -323,7 +360,7 @@ export function ResultPage() {
           {adaptation.error ??
             'Ocurrió un error durante el procesamiento.'}
 
-          <div className="mt-3">
+          <div className="mt-3 flex flex-wrap gap-2">
             <Link to="/new">
               <Button
                 variant="secondary"
@@ -334,6 +371,13 @@ export function ResultPage() {
               >
                 Intentar nuevamente
               </Button>
+            </Link>
+
+            <Link
+              to="/history"
+              className="btn-ghost text-sm"
+            >
+              Ver historial
             </Link>
           </div>
         </Alert>
