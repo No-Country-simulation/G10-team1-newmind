@@ -53,19 +53,28 @@ function getRecentAdaptations(adaptations = []) {
 }
 
 function getDashboardStats(documents = [], adaptations = []) {
+  const completedAdaptations = adaptations.filter(
+    (adaptation) => adaptation.status === 'completed'
+  )
+
   const formats = new Set(
-    adaptations
+    completedAdaptations
       .map((adaptation) => adaptation.format)
       .filter(Boolean)
   )
 
-  const scores = adaptations
+  const scores = completedAdaptations
     .map((adaptation) => adaptation.evaluation?.score)
-    .filter((score) => typeof score === 'number' && !Number.isNaN(score))
+    .filter(
+      (score) =>
+        typeof score === 'number' &&
+        !Number.isNaN(score)
+    )
 
   const averageScore =
     scores.length > 0
-      ? scores.reduce((total, score) => total + score, 0) / scores.length
+      ? scores.reduce((total, score) => total + score, 0) /
+        scores.length
       : null
 
   return [
@@ -78,7 +87,7 @@ function getDashboardStats(documents = [], adaptations = []) {
     },
     {
       label: 'Adaptaciones generadas',
-      value: adaptations.length,
+      value: completedAdaptations.length,
       icon: Zap,
       color: 'text-brand-400',
       bg: 'bg-brand-400/10',
@@ -92,9 +101,10 @@ function getDashboardStats(documents = [], adaptations = []) {
     },
     {
       label: 'Score promedio Critic',
-      value: averageScore !== null
-        ? `${Math.round(averageScore * 100)}%`
-        : '—',
+      value:
+        averageScore !== null
+          ? `${Math.round(averageScore * 100)}%`
+          : '—',
       icon: TrendingUp,
       color: 'text-emerald-400',
       bg: 'bg-emerald-400/10',
