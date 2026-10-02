@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams, useLocation } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import { ArrowLeft, Download, RefreshCw } from 'lucide-react'
+
 import { GenerationStatus } from '@/widgets/generation-status/GenerationStatus'
 import { ContentViewer } from '@/widgets/content-viewer/ContentViewer'
 import { adaptationsApi } from '@/shared/api'
+
 import { Card } from '@/shared/ui/Card'
 import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
@@ -11,20 +13,39 @@ import { Alert } from '@/shared/ui/Alert'
 
 // ── Polling helpers ────────────────────────────────────────────────────────────
 
-const AGENT_SEQUENCE = ['orchestrator', 'researcher', 'context', 'generator', 'critic']
-const POLL_INTERVAL_MS = 2_000
+const AGENT_SEQUENCE = [
+  'orchestrator',
+  'researcher',
+  'context',
+  'generator',
+  'critic',
+]
 
-function usePipelineAgent(status) {
+const POLL_INTERVAL_MS = 2_000
+const MAX_POLL_ATTEMPTS = 30
+
+/**
+ * Provides a visual estimate of the pipeline stage while the backend
+ * reports the adaptation as "processing".
+ *
+ * This is presentation-only. The backend does not currently expose
+ * the real-time active agent.
+ */
+function useVisualPipelineStage(status) {
   const [currentAgent, setCurrentAgent] = useState(AGENT_SEQUENCE[0])
 
   useEffect(() => {
-    if (status !== 'processing') return
+    if (status !== 'processing') {
+      setCurrentAgent(AGENT_SEQUENCE[0])
+      return undefined
+    }
 
     let index = 0
+
     const interval = setInterval(() => {
       index = Math.min(index + 1, AGENT_SEQUENCE.length - 1)
       setCurrentAgent(AGENT_SEQUENCE[index])
-    }, 1800)
+    }, 1_800)
 
     return () => clearInterval(interval)
   }, [status])
@@ -44,22 +65,48 @@ function useAdaptationResult(id, initialAdaptation) {
   useEffect(() => {
     let ignore = false
     let timeoutId
+    let pollAttempts = 0
 
     const loadFullAdaptation = async () => {
       const fullAdaptation = await adaptationsApi.get(id)
+
       if (!ignore) {
         setAdaptation(fullAdaptation)
       }
+
       return fullAdaptation
     }
 
+    const stopPollingBecauseOfTimeout = () => {
+      if (!ignore) {
+        setError(
+          'La generación está tardando más de lo esperado. ' +
+          'Puedes volver a consultar el resultado desde el historial.'
+        )
+      }
+    }
+
     const pollStatus = async () => {
+      if (ignore) return
+
+      pollAttempts += 1
+
+      if (pollAttempts > MAX_POLL_ATTEMPTS) {
+        stopPollingBecauseOfTimeout()
+        return
+      }
+
       try {
         const statusUpdate = await adaptationsApi.getStatus(id)
+
         if (ignore) return
 
         setError(null)
-        setAdaptation((prev) => ({ ...prev, ...statusUpdate }))
+
+        setAdaptation((prev) => ({
+          ...prev,
+          ...statusUpdate,
+        }))
 
         if (isTerminalStatus(statusUpdate.status)) {
           await loadFullAdaptation()
@@ -68,9 +115,16 @@ function useAdaptationResult(id, initialAdaptation) {
 
         timeoutId = setTimeout(pollStatus, POLL_INTERVAL_MS)
       } catch (err) {
-        if (!ignore) setError(err.message ?? 'Error al consultar el estado de la adaptación.')
+        if (!ignore) {
+          setError(
+            err.message ??
+            'Error al consultar el estado de la adaptación.'
+          )
+        }
       } finally {
-        if (!ignore) setLoading(false)
+        if (!ignore) {
+          setLoading(false)
+        }
       }
     }
 
@@ -79,16 +133,29 @@ function useAdaptationResult(id, initialAdaptation) {
     } else {
       loadFullAdaptation()
         .then((fullAdaptation) => {
-          if (!ignore && !isTerminalStatus(fullAdaptation.status)) {
+          if (
+            !ignore &&
+            !isTerminalStatus(fullAdaptation.status)
+          ) {
             timeoutId = setTimeout(pollStatus, POLL_INTERVAL_MS)
           }
-          if (!ignore) setError(null)
+
+          if (!ignore) {
+            setError(null)
+          }
         })
         .catch((err) => {
-          if (!ignore) setError(err.message ?? 'Error al cargar la adaptación.')
+          if (!ignore) {
+            setError(
+              err.message ??
+              'Error al cargar la adaptación.'
+            )
+          }
         })
         .finally(() => {
-          if (!ignore) setLoading(false)
+          if (!ignore) {
+            setLoading(false)
+          }
         })
     }
 
@@ -98,7 +165,11 @@ function useAdaptationResult(id, initialAdaptation) {
     }
   }, [id, initialAdaptation])
 
-  return { adaptation, loading, error }
+  return {
+    adaptation,
+    loading,
+    error,
+  }
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -106,7 +177,10 @@ function useAdaptationResult(id, initialAdaptation) {
 function AdaptationMeta({ adaptation }) {
   return (
     <div>
-      <h1 className="page-title">{adaptation.documentTitle ?? 'Resultado'}</h1>
+      <h1 className="page-title">
+        {adaptation.documentTitle ?? 'Resultado'}
+      </h1>
+
       <div className="flex flex-wrap items-center gap-2 mt-2">
         <Badge variant="brand">{adaptation.profile}</Badge>
         <Badge variant="violet">{adaptation.format}</Badge>
@@ -120,12 +194,20 @@ function AdaptationMeta({ adaptation }) {
 function PageHeader({ adaptation }) {
   return (
     <div className="flex items-center justify-between">
-      <Link to="/" className="btn-ghost text-sm flex items-center gap-1.5">
+      <Link
+        to="/"
+        className="btn-ghost text-sm flex items-center gap-1.5"
+      >
         <ArrowLeft className="w-4 h-4" />
         Dashboard
       </Link>
+
       {adaptation.status === 'completed' && (
-        <Button variant="secondary" size="sm" leftIcon={<Download className="w-4 h-4" />}>
+        <Button
+          variant="secondary"
+          size="sm"
+          leftIcon={<Download className="w-4 h-4" />}
+        >
           Exportar
         </Button>
       )}
@@ -139,14 +221,26 @@ export function ResultPage() {
   const { id } = useParams()
   const { state } = useLocation()
 
-  const { adaptation, loading, error } = useAdaptationResult(id, state?.adaptation ?? null)
-  const { currentAgent } = usePipelineAgent(adaptation?.status)
+  const {
+    adaptation,
+    loading,
+    error,
+  } = useAdaptationResult(
+    id,
+    state?.adaptation ?? null
+  )
+
+  const { currentAgent } = useVisualPipelineStage(
+    adaptation?.status
+  )
 
   if (loading && !adaptation) {
     return (
       <div className="max-w-3xl mx-auto">
         <Card>
-          <p className="text-sm text-slate-400">Cargando adaptación...</p>
+          <p className="text-sm text-slate-400">
+            Cargando adaptación...
+          </p>
         </Card>
       </div>
     )
@@ -155,9 +249,17 @@ export function ResultPage() {
   if (!adaptation) {
     return (
       <div className="max-w-3xl mx-auto">
-        <Alert variant="error" title="Adaptación no encontrada">
-          {error ?? 'No se pudo cargar la información de esta adaptación.'}
-          <Link to="/history" className="block mt-2 text-sm underline">
+        <Alert
+          variant="error"
+          title="Adaptación no encontrada"
+        >
+          {error ??
+            'No se pudo cargar la información de esta adaptación.'}
+
+          <Link
+            to="/history"
+            className="block mt-2 text-sm underline"
+          >
             Ver historial
           </Link>
         </Alert>
@@ -165,16 +267,33 @@ export function ResultPage() {
     )
   }
 
-  const isProcessing = adaptation.status === 'processing' || adaptation.status === 'pending'
+  const isProcessing =
+    adaptation.status === 'processing' ||
+    adaptation.status === 'pending'
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
       <PageHeader adaptation={adaptation} />
+
       <AdaptationMeta adaptation={adaptation} />
 
       {error && (
-        <Alert variant="error" title="No se pudo actualizar el estado">
+        <Alert
+          variant="error"
+          title="No se pudo actualizar el estado"
+        >
           {error}
+
+          <div className="mt-3">
+            <Link to="/history">
+              <Button
+                variant="secondary"
+                size="sm"
+              >
+                Consultar historial
+              </Button>
+            </Link>
+          </div>
         </Alert>
       )}
 
@@ -197,11 +316,22 @@ export function ResultPage() {
 
       {/* Failed */}
       {adaptation.status === 'failed' && (
-        <Alert variant="error" title="Error en la generación">
-          {adaptation.error ?? 'Ocurrió un error durante el procesamiento.'}
+        <Alert
+          variant="error"
+          title="Error en la generación"
+        >
+          {adaptation.error ??
+            'Ocurrió un error durante el procesamiento.'}
+
           <div className="mt-3">
             <Link to="/new">
-              <Button variant="secondary" size="sm" leftIcon={<RefreshCw className="w-4 h-4" />}>
+              <Button
+                variant="secondary"
+                size="sm"
+                leftIcon={
+                  <RefreshCw className="w-4 h-4" />
+                }
+              >
                 Intentar nuevamente
               </Button>
             </Link>
