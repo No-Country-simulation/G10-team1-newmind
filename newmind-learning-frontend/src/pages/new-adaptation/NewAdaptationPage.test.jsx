@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation, useParams } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { adaptationsApi, documentsApi } from '@/shared/api'
+import { adaptationsApi, apiClient, documentsApi } from '@/shared/api'
 import { NewAdaptationPage } from './NewAdaptationPage'
 
 const uploadedDocument = {
@@ -35,6 +35,27 @@ function renderPage() {
     </MemoryRouter>
   )
 }
+
+describe('documentsApi.upload', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('sends the selected document as multipart form data to the backend endpoint', async () => {
+    const file = new File(['learning content'], 'source.md', { type: 'text/markdown' })
+    const postSpy = vi.spyOn(apiClient, 'post').mockResolvedValue(uploadedDocument)
+
+    await documentsApi.upload(file)
+
+    expect(postSpy).toHaveBeenCalledWith(
+      '/api/v1/documents',
+      expect.any(FormData),
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    )
+    const [, body] = postSpy.mock.calls[0]
+    expect(body.get('file')).toBe(file)
+  })
+})
 
 async function uploadDocument(user) {
   const file = new File(['test content'], 'source.txt', { type: 'text/plain' })
