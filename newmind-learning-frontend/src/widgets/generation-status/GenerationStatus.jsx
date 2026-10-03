@@ -84,8 +84,12 @@ function AgentStep({ agent, stepStatus }) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 /**
- * Visualises the multiagent pipeline progress.
+/**
+ * Visualises the adaptation pipeline progress.
  *
+ * The current agent is a frontend visual estimate.
+ * The backend currently exposes the adaptation status,
+ * but not the real-time active agent.
  * @param {Object} props
  * @param {'pending'|'processing'|'completed'|'failed'} props.status
  * @param {string}  [props.currentAgent]   - id of the agent currently running
@@ -105,7 +109,7 @@ export function GenerationStatus({ status, currentAgent, iteration = 0, maxItera
             {STATUS_LABELS[status] ?? STATUS_LABELS.pending}
           </p>
           {status === 'processing' && (
-            <p className="text-xs text-slate-500 mt-0.5">Sistema multiagente activo</p>
+            <p className="text-xs text-slate-500 mt-0.5">Procesamiento en curso · progreso visual estimado</p>
           )}
         </div>
         {iteration > 0 && (
