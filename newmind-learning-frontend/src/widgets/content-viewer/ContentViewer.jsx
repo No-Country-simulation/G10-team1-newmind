@@ -18,6 +18,7 @@ import { Card } from "@/shared/ui/Card";
 import { ScoreRing } from "@/shared/ui/Alert";
 import { cn } from "@/shared/utils";
 import { FlashCard } from "@/widgets/flash-card/FlashCard";
+import { adaptFlashcardsResponse } from "./adaptFlashcardsResponse";
 
 // ── Format icon map ───────────────────────────────────────────────────────────
 
@@ -37,48 +38,37 @@ const FORMAT_ICONS = {
  * Esta implementación reemplaza la antigua FlashcardsPage.
  * Consume directamente la adaptación generada por el backend.
  */
-function FlashcardsView({ adaptation }) {
+function FlashcardsView({ result }) {
 	const [currentIndex, setCurrentIndex] = useState(0);
 
-	const content = adaptation?.content || {};
-	const officialResponse = adaptation?.officialResponse || {};
+	if (result.status === "invalid") {
+		return (
+			<div role='alert' className='p-8 text-center text-rose-300'>
+				La respuesta recibida no cumple el contrato de flashcards.
+			</div>
+		);
+	}
 
-	const metadata = officialResponse.metadatos || {};
-	const qualityEvaluation =
-		officialResponse.evaluacion_calidad || adaptation?.evaluation || {};
+	if (result.status === "empty") {
+		return (
+			<div role='status' className='p-8 text-center text-slate-400'>
+				No hay flashcards para mostrar.
+			</div>
+		);
+	}
 
-	const storage = officialResponse.almacenamiento_oci || {};
-
-	const items = Array.isArray(content.items) ? content.items : [];
-
-	const profile = adaptation?.profile || metadata.perfil_aplicado || "";
-
-	const studyTime =
-		metadata.tiempo_estimado_estudio_minutos ||
-		content.tiempo_estimado_estudio_minutos ||
-		0;
-
-	const keyConcepts = metadata.conceptos_clave || content.conceptos_clave || [];
-
-	const qualityScore =
-		qualityEvaluation.anclaje_fuente_score ??
-		qualityEvaluation.source_anchoring_score ??
-		adaptation?.evaluation?.score ??
-		0;
-
-	const title = content.titulo || content.title || "Flashcards";
-
-	const introduction =
-		content.introduccion_contextualizada ||
-		content.contextual_introduction ||
-		"";
-
-	const remarks =
-		qualityEvaluation.observaciones || qualityEvaluation.remarks || "";
-
-	const bucket = storage.bucket || "";
-
-	const objectId = storage.objeto_id || storage.object_id || "";
+	const {
+		title,
+		introduction,
+		profile,
+		studyTime,
+		keyConcepts,
+		qualityScore,
+		remarks,
+		bucket,
+		objectId,
+		items,
+	} = result.viewModel;
 
 	const handleNext = () => {
 		if (currentIndex < items.length - 1) {
@@ -91,14 +81,6 @@ function FlashcardsView({ adaptation }) {
 			setCurrentIndex((prev) => prev - 1);
 		}
 	};
-
-	if (items.length === 0) {
-		return (
-			<div className='p-8 text-center text-slate-400'>
-				No hay datos de flashcards disponibles.
-			</div>
-		);
-	}
 
 	return (
 		<div className='min-h-screen bg-slate-950 text-slate-100 py-10 px-4 sm:px-6 lg:px-8'>
@@ -127,9 +109,9 @@ function FlashcardsView({ adaptation }) {
 					</div>
 
 					{/* Title */}
-					<h1 className='text-2xl sm:text-3xl font-bold text-slate-50 mb-2'>
+					<h2 className='text-2xl sm:text-3xl font-bold text-slate-50 mb-2'>
 						{title}
-					</h1>
+					</h2>
 
 					{/* Introduction */}
 					<p className='text-slate-400 text-sm sm:text-base leading-relaxed mb-6'>
@@ -158,6 +140,7 @@ function FlashcardsView({ adaptation }) {
 				{/* FLASHCARD VIEWER */}
 				<div>
 					<FlashCard
+						key={currentIndex}
 						item={items[currentIndex]}
 						index={currentIndex}
 						total={items.length}
@@ -166,9 +149,10 @@ function FlashcardsView({ adaptation }) {
 					{/* NAVIGATION CONTROLS */}
 					<div className='flex items-center justify-between max-w-xl mx-auto mt-4 px-2'>
 						<button
+							type='button'
 							onClick={handlePrev}
 							disabled={currentIndex === 0}
-							className='flex items-center gap-1 px-4 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm font-semibold text-slate-300 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm transition-all'>
+							className='flex items-center gap-1 px-4 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm font-semibold text-slate-300 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400'>
 							<ChevronLeft className='w-4 h-4' />
 							Anterior
 						</button>
@@ -178,9 +162,10 @@ function FlashcardsView({ adaptation }) {
 						</span>
 
 						<button
+							type='button'
 							onClick={handleNext}
 							disabled={currentIndex === items.length - 1}
-							className='flex items-center gap-1 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm transition-all'>
+							className='flex items-center gap-1 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400'>
 							Siguiente
 							<ChevronRight className='w-4 h-4' />
 						</button>
@@ -473,7 +458,6 @@ function CanonicalContentView({ content }) {
 // ── Format renderer map ───────────────────────────────────────────────────────
 
 const FORMAT_VIEWS = {
-	Flashcards: FlashcardsView,
 	Tutorial: TutorialView,
 	"Resumen Ejecutivo": ExecutiveSummaryView,
 	Quiz: QuizView,
@@ -522,15 +506,20 @@ function EvaluationBreakdown({ evaluation }) {
  * @param {import('@/shared/types').Adaptation} props.adaptation
  */
 export function ContentViewer({ adaptation }) {
-	if (!adaptation?.content || adaptation.status !== "completed") {
+	if (!adaptation || adaptation.status !== "completed") {
 		return null;
 	}
+	const flashcardsResult =
+		adaptation.format === "Flashcards"
+			? adaptFlashcardsResponse(adaptation)
+			: null;
+	if (!adaptation.content && !flashcardsResult) return null;
 
 	const FormatIcon = FORMAT_ICONS[adaptation.format] ?? BookOpen;
 
 	const FormatView = FORMAT_VIEWS[adaptation.format];
 
-	const { content, evaluation } = adaptation;
+	const { content = {}, evaluation } = adaptation;
 
 	const usesCanonicalBackendContent = Boolean(
 		content.titulo ||
@@ -539,7 +528,7 @@ export function ContentViewer({ adaptation }) {
 	);
 
 	return (
-		<div className='space-y-6 animate-fade-in'>
+			<div className='space-y-6'>
 			{/* Header */}
 			<div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-slate-800/60 rounded-xl border border-slate-700/50'>
 				<div className='flex items-center gap-3'>
@@ -587,13 +576,7 @@ export function ContentViewer({ adaptation }) {
 			{/* Format-specific content */}
 
 			{adaptation.format === "Flashcards" ? (
-				/*
-				 * IMPORTANTE:
-				 * Flashcards debe tener prioridad sobre CanonicalContentView.
-				 * El backend utiliza titulo + introduccion_contextualizada + items,
-				 * por lo que de lo contrario entraría en CanonicalContentView.
-				 */
-				<FlashcardsView adaptation={adaptation} />
+				<FlashcardsView result={flashcardsResult} />
 			) : usesCanonicalBackendContent ? (
 				<CanonicalContentView content={content} />
 			) : FormatView ? (

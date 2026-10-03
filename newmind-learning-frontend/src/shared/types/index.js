@@ -34,6 +34,14 @@
  */
 
 /**
+ * Canonical PED-01 Flashcards item.
+ * @typedef {Object} FlashcardItem
+ * @property {string} frente
+ * @property {string} dorso
+ * @property {string} pista_didactica
+ */
+
+/**
  * @typedef {Object} AdaptedContent
  * @property {string} titulo
  * @property {string} introduccion_contextualizada
