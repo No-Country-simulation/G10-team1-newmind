@@ -58,17 +58,18 @@ class VectorStoreManager:
         if results and results.get("documents") and len(results["documents"]) > 0:
             docs = results["documents"][0]
             metas = results["metadatas"][0] if results.get("metadatas") else [{}] * len(docs)
-            distances = results["distances"][0] if results.get("distances") else [0.0] * len(docs)
-            ids = results["ids"][0] if results.get("ids") else [f"doc_{i}" for i in range(len(docs))]
+            distances = results["distances"][0]
+            ids = results["ids"][0]
 
             for doc_id, doc, meta, dist in zip(ids, docs, metas, distances):
                 # En distancia coseno de chroma: similitud = 1.0 - distancia
-                similarity = max(0.0, min(1.0, 1.0 - dist))
+                similarity = 1.0 - dist
                 retrieved_docs.append({
                     "chunk_id": doc_id,
                     "content": doc,
                     "metadata": meta,
-                    "similarity_score": round(similarity, 4)
+                    "distance": dist,
+                    "similarity_score": similarity
                 })
 
         return retrieved_docs
