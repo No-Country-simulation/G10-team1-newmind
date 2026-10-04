@@ -63,7 +63,10 @@ Genera el JSON estructurado con los campos:
         generated_raw = self._call_llm(system_prompt, user_content, request)
 
         # 3. Construcción del objeto de calidad y metadatos
-        grounding_score = max(0.85, round(avg_similarity if avg_similarity > 0 else 0.95, 2))
+        # Grounding formula: score = round(observed average retrieval similarity, 2),
+        # bounded to the API contract range [0.0, 1.0]. A missing retrieval signal is
+        # treated as 0.0, and approval thresholds are applied outside this metric.
+        grounding_score = round(min(max(avg_similarity or 0.0, 0.0), 1.0), 2)
         calidad = EvaluacionCalidad(
             anclaje_fuente_score=grounding_score,
             claridad_pedagogica="Alta",
