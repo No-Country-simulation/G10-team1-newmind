@@ -89,29 +89,26 @@ Genera el JSON estructurado con los campos:
             items=generated_raw.get("items", [])
         )
 
-        # 4. Generar ID único de objeto y persistir en OCI Object Storage
+        # 4. Generate a unique object ID
         slug_titulo = re.sub(r'[^a-zA-Z0-9]', '-', request.documento_titulo.lower())[:20].strip('-')
         slug_perfil = request.perfil_destinatario.name.lower()
         slug_formato = request.formato_salida.name.lower()
         objeto_id = f"contenido-{slug_titulo}-{slug_perfil}-{slug_formato}-{uuid.uuid4().hex[:6]}.json"
 
-        # 5. Persistencia obligatoria en OCI Object Storage (Always Free)
-        payload_para_oci = {
-            "status": "exito",
-            "metadatos": metadatos.model_dump(),
-            "contenido_adaptado": contenido.model_dump(),
-            "evaluacion_calidad": calidad.model_dump()
-        }
-        almacenamiento_oci = oci_storage.upload_educational_json(objeto_id, payload_para_oci)
-
-        # 6. Respuesta final estructurada
-        return RespuestaAdaptacion(
+        # 5. Validate the complete response before the OCI side effect
+        response = RespuestaAdaptacion(
             status="exito",
             metadatos=metadatos,
             contenido_adaptado=contenido,
             evaluacion_calidad=calidad,
-            almacenamiento_oci=almacenamiento_oci
+            almacenamiento_oci=AlmacenamientoOCI(bucket=settings.OCI_BUCKET_OUTPUTS, objeto_id=objeto_id)
         )
+
+        # 6. Persist the validated payload in OCI Object Storage (Always Free)
+        payload_para_oci = response.model_dump(exclude={"almacenamiento_oci"})
+        response.almacenamiento_oci = oci_storage.upload_educational_json(objeto_id, payload_para_oci)
+
+        return response
 
     def _call_llm(self, system_prompt: str, user_prompt: str, request: SolicitudAdaptacion) -> Dict[str, Any]:
         """Llama a la API de Gemini, OpenAI o genera simulación heurística si no hay API key."""

@@ -207,11 +207,13 @@ def upload_document(client: TestClient, filename: str = "source.txt") -> dict[st
     return response.json()
 
 
-def adaptation_payload(document_id: int) -> dict[str, Any]:
+def adaptation_payload(
+    document_id: int, *, output_format: str = "Resumen Ejecutivo"
+) -> dict[str, Any]:
     return {
         "documentId": document_id,
         "profile": "Lider",
-        "format": "Resumen Ejecutivo",
+        "format": output_format,
         "industry": "Fintech",
         "detailLevel": "Detallado",
     }
@@ -462,6 +464,24 @@ def test_adaptation_workflow_maps_transport_values_and_filters(api_context):
     ).json()
     assert [item["id"] for item in filtered] == [created["id"]]
     assert client.get("/api/v1/adaptations", params={"profile": "Gestor"}).json() == []
+
+
+def test_invalid_flashcards_response_is_not_persisted_as_completed(api_context):
+    client, _ = api_context
+    document = upload_document(client)
+
+    response = client.post(
+        "/api/v1/adaptations",
+        json=adaptation_payload(document["id"], output_format="Flashcards"),
+    )
+
+    assert response.status_code == 202
+    adaptation_id = response.json()["id"]
+    assert client.get(f"/api/v1/adaptations/{adaptation_id}/status").json()["status"] == "failed"
+    persisted = client.get(f"/api/v1/adaptations/{adaptation_id}").json()
+    assert persisted["status"] == "failed"
+    assert persisted["officialResponse"] is None
+    assert persisted["content"] is None
 
 
 def test_adaptation_for_missing_document_returns_404(api_context):

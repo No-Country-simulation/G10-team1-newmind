@@ -78,7 +78,7 @@
     @apply text-2xl font-bold text-slate-50;
   }
 
-  /* estyles for FlashCards */
+  /* Flashcard 3D faces and rotation */
   @layer utilities {
     .perspective-1000 {
       perspective: 1000px;
@@ -95,6 +95,12 @@
 
     .rotate-y-180 {
       transform: rotateY(180deg);
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .flashcard-flip {
+        transition: transform 500ms ease;
+      }
     }
   }
 }

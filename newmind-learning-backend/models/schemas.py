@@ -3,8 +3,10 @@ Esquemas Pydantic y Contratos de Datos para NuevaMente.
 Cumple estrictamente con la especificación del Hackathon ONE G10 (Páginas 4 y 5 del PDF).
 """
 from enum import Enum
-from typing import List, Optional, Union, Dict, Any
-from pydantic import BaseModel, Field
+from typing import Annotated, Any, Dict, List, Optional, Self
+from pydantic import BaseModel, Field, StringConstraints, model_validator
+
+NonEmptyString = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
 # --- Enumeraciones de Entrada ---
 class PerfilDestinatario(str, Enum):
@@ -42,9 +44,9 @@ class SolicitudAdaptacion(BaseModel):
 
 # --- Modelos de Elementos Pedagógicos (Items) ---
 class FlashcardItem(BaseModel):
-    frente: str = Field(..., description="Pregunta o concepto clave")
-    dorso: str = Field(..., description="Explicación adaptada pedagógicamente")
-    pista_didactica: Optional[str] = Field(None, description="Analogía o pista para facilitar memorización")
+    frente: NonEmptyString = Field(..., description="Pregunta o concepto clave")
+    dorso: NonEmptyString = Field(..., description="Explicación adaptada pedagógicamente")
+    pista_didactica: NonEmptyString = Field(..., description="Analogía o pista para facilitar memorización")
 
 class QuizItem(BaseModel):
     pregunta: str = Field(..., description="Pregunta de evaluación")
@@ -89,3 +91,10 @@ class RespuestaAdaptacion(BaseModel):
     contenido_adaptado: ContenidoAdaptado
     evaluacion_calidad: EvaluacionCalidad
     almacenamiento_oci: AlmacenamientoOCI
+
+    @model_validator(mode="after")
+    def validate_flashcard_items(self) -> Self:
+        if self.metadatos.formato_generado == FormatoSalida.FLASHCARDS.value:
+            for item in self.contenido_adaptado.items:
+                FlashcardItem.model_validate(item)
+        return self
