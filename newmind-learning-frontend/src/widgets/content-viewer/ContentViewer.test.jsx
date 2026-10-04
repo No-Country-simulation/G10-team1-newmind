@@ -1,6 +1,10 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
+import postcss from 'postcss'
+import tailwindcss from 'tailwindcss'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { adaptFlashcardsResponse } from './adaptFlashcardsResponse'
 import { ContentViewer } from './ContentViewer'
 
@@ -137,6 +141,7 @@ describe('Flashcards adaptation contract', () => {
     const hintButton = screen.getByRole('button', { name: 'Ver pista didáctica' })
     await user.click(hintButton)
     expect(screen.getByText('Imagine una red privada.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Mostrar respuesta de la tarjeta 1' })).toHaveAttribute('aria-pressed', 'false')
     hintButton.focus()
     await user.keyboard(' ')
     expect(screen.queryByText('Imagine una red privada.')).not.toBeInTheDocument()
@@ -147,6 +152,13 @@ describe('Flashcards adaptation contract', () => {
     flipButton.focus()
     await user.keyboard('{Enter}')
     expect(screen.getByText('Una red virtual privada en OCI.')).toBeInTheDocument()
+    expect(flipButton).toHaveAttribute('aria-pressed', 'true')
+    expect(flipButton).toHaveFocus()
+    expect(screen.queryByRole('button', { name: 'Ver pista didáctica' })).not.toBeInTheDocument()
+    flipButton.focus()
+    await user.keyboard(' ')
+    expect(flipButton).toHaveAttribute('aria-pressed', 'false')
+    await user.keyboard('{Enter}')
 
     await user.click(screen.getByRole('button', { name: 'Siguiente' }))
     expect(screen.getByText('¿Qué contiene una VCN?')).toBeInTheDocument()
@@ -160,6 +172,42 @@ describe('Flashcards adaptation contract', () => {
     previousButton.focus()
     await user.keyboard('{Enter}')
     expect(screen.getByText('¿Qué es una VCN?')).toBeInTheDocument()
+  })
+
+  it('flips by clicking non-control areas of both faces without flipping on hint', async () => {
+    const user = userEvent.setup()
+    render(<ContentViewer adaptation={buildAdaptation()} />)
+
+    const question = screen.getByRole('heading', { name: '¿Qué es una VCN?' })
+    await user.click(question)
+    const flipButton = screen.getByRole('button', { name: 'Volver a la pregunta de la tarjeta 1' })
+    expect(flipButton).toHaveAttribute('aria-pressed', 'true')
+    expect(question.closest('[aria-hidden]')).toHaveAttribute('aria-hidden', 'true')
+
+    await user.click(screen.getByText('Una red virtual privada en OCI.'))
+    expect(flipButton).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('heading', { name: '¿Qué es una VCN?' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Ver pista didáctica' }))
+    expect(screen.getByText('Imagine una red privada.')).toBeInTheDocument()
+    expect(flipButton).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('emits a 3D transform transition only when motion is preferred', async () => {
+    const flashcardCss = readFileSync(resolve('src/app/styles/globals.css'), 'utf8')
+    const css = (await postcss([tailwindcss()]).process(flashcardCss, { from: undefined })).css
+    expect(css).toMatch(/\.perspective-1000\s*\{\s*perspective:\s*1000px/)
+    expect(css).toMatch(/\.transform-style-3d\s*\{\s*transform-style:\s*preserve-3d/)
+    expect(css).toMatch(/\.backface-hidden\s*\{\s*backface-visibility:\s*hidden/)
+    expect(css).toMatch(/\.rotate-y-180\s*\{\s*transform:\s*rotateY\(180deg\)/)
+    expect(css).toMatch(/@media\s*\(prefers-reduced-motion:\s*no-preference\)[\s\S]*?\.flashcard-flip\s*\{\s*transition:\s*transform 500ms/)
+
+    const { container } = render(<ContentViewer adaptation={buildAdaptation()} />)
+    const flipButton = screen.getByRole('button', { name: 'Mostrar respuesta de la tarjeta 1' })
+    expect(flipButton).toHaveClass('flashcard-flip-control')
+    expect(container.querySelector('.flashcard-flip.transform-style-3d')).toBeInTheDocument()
+    await userEvent.setup().click(flipButton)
+    expect(container.querySelector('.flashcard-flip.rotate-y-180')).toBeInTheDocument()
   })
 
   it('preserves non-Flashcards rendering', () => {
