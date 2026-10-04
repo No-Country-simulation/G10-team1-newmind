@@ -96,6 +96,35 @@ describe('Flashcards adaptation contract', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
+  it('renders canonical cards when the completed adaptation content is null', async () => {
+    const user = userEvent.setup()
+    const adaptation = buildAdaptation()
+    adaptation.content = null
+
+    render(<ContentViewer adaptation={adaptation} />)
+
+    expect(screen.getByRole('heading', { name: 'Redes en OCI' })).toBeInTheDocument()
+    expect(screen.getByText('¿Qué es una VCN?')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Mostrar respuesta de la tarjeta 1' }))
+    expect(screen.getByText('Una red virtual privada en OCI.')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it.each([
+    ['missing items', null],
+    ['malformed cards', [{ front: 'Question', back: 'Answer' }]],
+  ])('shows invalid-contract feedback for %s with null adaptation content', (_case, items) => {
+    const adaptation = buildAdaptation(items)
+    adaptation.content = null
+
+    render(<ContentViewer adaptation={adaptation} />)
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'La respuesta recibida no cumple el contrato de flashcards.'
+    )
+    expect(screen.queryByText('No hay flashcards para mostrar.')).not.toBeInTheDocument()
+  })
+
   it('renders metadata and supports card controls by pointer and keyboard', async () => {
     const user = userEvent.setup()
     render(<ContentViewer adaptation={buildAdaptation()} />)

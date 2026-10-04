@@ -519,7 +519,8 @@ export function ContentViewer({ adaptation }) {
 
 	const FormatView = FORMAT_VIEWS[adaptation.format];
 
-	const { content = {}, evaluation } = adaptation;
+	const { evaluation } = adaptation;
+	const content = adaptation.content ?? {};
 
 	const usesCanonicalBackendContent = Boolean(
 		content.titulo ||
