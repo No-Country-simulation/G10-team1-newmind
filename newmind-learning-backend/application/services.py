@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from pathlib import Path, PurePath
 from typing import Any
+from uuid import uuid4
 
 from application.repositories import (
     AdaptationRecord,
@@ -96,29 +97,32 @@ class DocumentService:
             raise DocumentProcessingError("Document content could not be extracted.") from exc
         record = self.repository.create(
             title=Path(safe_filename).stem,
-            filename=safe_filename,
+            filename=filename,
             document_type=normalized_document.type.value,
             size=len(content),
             content=normalized_document.text,
-            storage_object_id=safe_filename,
+            storage_object_id=f"{uuid4().hex}-{safe_filename}",
         )
-        storage_object_id = f"{record.id}-{safe_filename}"
-        record = self.repository.update_storage_object_id(record.id, storage_object_id)
 
         try:
             chunks = self.chunker.split_document(normalized_document)
             self.vector_store.add_chunks(chunks)
-            self.storage.upload_raw_document(storage_object_id, content, content_type)
+            storage = self.storage.upload_raw_document(
+                record.storage_object_id, content, content_type
+            )
+            record = self.repository.update_storage(record.id, storage)
         except Exception as exc:
             self.repository.delete(record.id)
             raise DocumentProcessingError("Document could not be indexed or stored.") from exc
         return record
 
     def list(self) -> list[DocumentRecord]:
-        return self.repository.list()
+        # Upload reserves a record before indexing; publish only stored originals.
+        return [record for record in self.repository.list() if record.storage is not None]
 
     def get(self, document_id: int) -> DocumentRecord | None:
-        return self.repository.get(document_id)
+        record = self.repository.get(document_id)
+        return record if record is not None and record.storage is not None else None
 
     def delete(self, document_id: int) -> bool:
         return self.repository.delete(document_id)

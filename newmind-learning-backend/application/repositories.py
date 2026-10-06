@@ -8,6 +8,7 @@ from threading import RLock
 from typing import Any
 
 from models.schemas import SolicitudAdaptacion
+from storage.contracts import StorageResult
 
 
 def utc_now() -> datetime:
@@ -24,6 +25,7 @@ class DocumentRecord:
     content: str
     created_at: datetime
     storage_object_id: str
+    storage: StorageResult | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,10 +91,10 @@ class DocumentRepository:
         with self._lock:
             return self._records.pop(document_id, None) is not None
 
-    def update_storage_object_id(self, document_id: int, object_id: str) -> DocumentRecord:
+    def update_storage(self, document_id: int, storage: StorageResult) -> DocumentRecord:
         with self._lock:
             current = self._records[document_id]
-            updated = replace(current, storage_object_id=object_id)
+            updated = replace(current, storage_object_id=storage.object_id, storage=storage)
             self._records[document_id] = updated
             return updated
 
