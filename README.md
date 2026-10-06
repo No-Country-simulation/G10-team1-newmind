@@ -79,8 +79,8 @@ Variables principales:
 
 | Variable | Uso |
 | --- | --- |
-| `GROK_API_KEY` | API key opcional para Grok. |
 | `GEMINI_API_KEY` | API key opcional para Gemini. |
+| `GROK_API_KEY` | API key opcional para Grok. |
 | `OPENAI_API_KEY` | API key opcional para OpenAI. |
 | `ANTHROPIC_API_KEY` | API key opcional para Anthropic. |
 | `APP_ENV` | Entorno de ejecución; por defecto `development`. |

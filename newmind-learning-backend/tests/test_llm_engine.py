@@ -118,12 +118,11 @@ def test_grok_key_is_optional_and_can_be_read_from_environment(monkeypatch):
     assert Settings(_env_file=None).GROK_API_KEY == "xai-test-key"
 
 
-def test_grok_success_uses_xai_endpoint_and_json_mode_before_other_providers(monkeypatch):
+def test_no_gemini_key_uses_grok_endpoint_and_json_mode(monkeypatch):
     calls = []
     payload = _generated_payload(items=[])
     _mock_openai_sdk(monkeypatch, calls, {"grok": json.dumps(payload)})
-    _mock_gemini_sdk(monkeypatch, calls, json.dumps(_generated_payload()))
-    provider = _provider_engine(monkeypatch, grok="xai-test-key", gemini="gemini-test-key", openai="openai-test-key")
+    provider = _provider_engine(monkeypatch, grok="xai-test-key", openai="openai-test-key")
 
     assert provider._call_llm("system", "user", _request()) == payload
     assert calls == [
@@ -136,31 +135,46 @@ def test_grok_success_uses_xai_endpoint_and_json_mode_before_other_providers(mon
     ]
 
 
-@pytest.mark.parametrize("grok_outcome", [RuntimeError("secret-in-provider-error"), "not json"])
-def test_grok_failure_falls_through_to_gemini_then_openai(monkeypatch, caplog, grok_outcome):
+@pytest.mark.parametrize("gemini_outcome", [RuntimeError("secret-in-provider-error"), "not json"])
+def test_gemini_failure_falls_through_to_grok_then_openai(monkeypatch, caplog, gemini_outcome):
     calls = []
     payload = _generated_payload()
-    _mock_openai_sdk(monkeypatch, calls, {"grok": grok_outcome, "openai": json.dumps(payload)})
-    _mock_gemini_sdk(monkeypatch, calls, RuntimeError("gemini-secret-in-error"))
+    _mock_openai_sdk(monkeypatch, calls, {"grok": RuntimeError("grok-secret-in-error"), "openai": json.dumps(payload)})
+    _mock_gemini_sdk(monkeypatch, calls, gemini_outcome)
     provider = _provider_engine(monkeypatch, grok="secret-xai", gemini="secret-gemini", openai="secret-openai")
 
     with caplog.at_level(logging.WARNING, logger="llm.engine"):
         assert provider._call_llm("system", "user", _request()) == payload
 
-    assert [call[0] for call in calls] == ["grok", "grok", "gemini_config", "gemini_model", "gemini", "openai", "openai"]
+    assert [call[0] for call in calls] == ["gemini_config", "gemini_model", "gemini", "grok", "grok", "openai", "openai"]
     assert "secret" not in caplog.text
     assert "Grok" in caplog.text and "Gemini" in caplog.text
 
 
-def test_no_grok_key_retains_gemini_priority(monkeypatch):
+def test_gemini_wins_when_both_keys_are_configured(monkeypatch):
     calls = []
     payload = _generated_payload()
-    _mock_openai_sdk(monkeypatch, calls, {"openai": json.dumps(payload)})
+    _mock_openai_sdk(monkeypatch, calls, {"grok": json.dumps(_generated_payload(items=[])), "openai": json.dumps(payload)})
     _mock_gemini_sdk(monkeypatch, calls, json.dumps(payload))
-    provider = _provider_engine(monkeypatch, gemini="gemini-test-key", openai="openai-test-key")
+    provider = _provider_engine(monkeypatch, grok="grok-test-key", gemini="gemini-test-key", openai="openai-test-key")
 
     assert provider._call_llm("system", "user", _request()) == payload
     assert [call[0] for call in calls] == ["gemini_config", "gemini_model", "gemini"]
+
+
+@pytest.mark.parametrize("gemini_outcome", [RuntimeError("secret-gemini-error"), "not json", json.dumps({"items": []})])
+def test_gemini_failure_or_invalid_payload_uses_grok_before_openai(monkeypatch, caplog, gemini_outcome):
+    calls = []
+    payload = _generated_payload()
+    _mock_gemini_sdk(monkeypatch, calls, gemini_outcome)
+    _mock_openai_sdk(monkeypatch, calls, {"grok": json.dumps(payload), "openai": json.dumps(_generated_payload(items=[]))})
+    provider = _provider_engine(monkeypatch, gemini="secret-gemini", grok="secret-grok", openai="secret-openai")
+
+    with caplog.at_level(logging.WARNING, logger="llm.engine"):
+        assert provider._call_llm("system", "user", _request()) == payload
+
+    assert [call[0] for call in calls] == ["gemini_config", "gemini_model", "gemini", "grok", "grok"]
+    assert "secret" not in caplog.text
 
 
 def test_all_providers_fail_and_heuristic_remains_available(monkeypatch, caplog):
@@ -173,6 +187,7 @@ def test_all_providers_fail_and_heuristic_remains_available(monkeypatch, caplog)
         result = provider._call_llm("system", "user", _request())
 
     assert result == provider._generate_heuristic_demo(_request())
+    assert [call[0] for call in calls] == ["gemini_config", "gemini_model", "gemini", "grok", "grok", "openai", "openai"]
     assert "secret" not in caplog.text
 
 
@@ -190,17 +205,17 @@ def test_no_keys_uses_heuristic_without_importing_providers(monkeypatch):
     {**_generated_payload(), "items": [{"frente": "Question", "dorso": "Answer"}]},
     {**_generated_payload(), "items": [{"frente": "Question", "dorso": "Answer", "pista_didactica": "  "}]},
 ])
-def test_invalid_grok_payload_falls_through_to_gemini_without_leaking_details(monkeypatch, caplog, invalid):
+def test_invalid_gemini_payload_falls_through_to_grok_without_leaking_details(monkeypatch, caplog, invalid):
     calls = []
     valid = _generated_payload()
-    _mock_openai_sdk(monkeypatch, calls, {"grok": json.dumps(invalid), "openai": json.dumps(valid)})
-    _mock_gemini_sdk(monkeypatch, calls, json.dumps(valid))
+    _mock_openai_sdk(monkeypatch, calls, {"grok": json.dumps(valid), "openai": json.dumps(valid)})
+    _mock_gemini_sdk(monkeypatch, calls, json.dumps(invalid))
     provider = _provider_engine(monkeypatch, grok="secret-xai", gemini="secret-gemini", openai="secret-openai")
 
     with caplog.at_level(logging.WARNING, logger="llm.engine"):
         assert provider._call_llm("system", "user", _request()) == valid
 
-    assert [call[0] for call in calls] == ["grok", "grok", "gemini_config", "gemini_model", "gemini"]
+    assert [call[0] for call in calls] == ["gemini_config", "gemini_model", "gemini", "grok", "grok"]
     assert "secret" not in caplog.text
     assert "not an item" not in caplog.text
 
@@ -262,7 +277,7 @@ def test_invalid_grok_and_gemini_use_valid_openai_before_upload(monkeypatch):
     response = provider.adapt_content(_request())
 
     assert [call[0] for call in calls] == [
-        "grok", "grok", "gemini_config", "gemini_model", "gemini", "openai", "openai"
+        "gemini_config", "gemini_model", "gemini", "grok", "grok", "openai", "openai"
     ]
     assert len(uploads) == 1
     assert uploads[0]["contenido_adaptado"]["items"] == response.contenido_adaptado.items == valid["items"]

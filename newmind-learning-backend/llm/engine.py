@@ -115,24 +115,11 @@ Genera el JSON estructurado con los campos:
         return response
 
     def _call_llm(self, system_prompt: str, user_prompt: str, request: SolicitudAdaptacion) -> Dict[str, Any]:
-        """Try Grok, Gemini, OpenAI, then the offline heuristic fallback."""
+        """Try Gemini, Grok, OpenAI, then the offline heuristic fallback."""
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ]
-        if self.grok_key:
-            try:
-                from openai import OpenAI
-                client = OpenAI(api_key=self.grok_key, base_url="https://api.x.ai/v1")
-                response = client.chat.completions.create(
-                    model="grok-4.7",
-                    messages=messages,
-                    response_format={"type": "json_object"},
-                )
-                return self._validate_generated(json.loads(response.choices[0].message.content), request)
-            except Exception:
-                logger.warning("Grok generation failed; trying the next provider.")
-
         # Intento con Gemini
         if self.gemini_key:
             try:
@@ -147,6 +134,19 @@ Genera el JSON estructurado con los campos:
                 return self._validate_generated(json.loads(response.text), request)
             except Exception:
                 logger.warning("Gemini generation failed; trying the next provider.")
+
+        if self.grok_key:
+            try:
+                from openai import OpenAI
+                client = OpenAI(api_key=self.grok_key, base_url="https://api.x.ai/v1")
+                response = client.chat.completions.create(
+                    model="grok-4.7",
+                    messages=messages,
+                    response_format={"type": "json_object"},
+                )
+                return self._validate_generated(json.loads(response.choices[0].message.content), request)
+            except Exception:
+                logger.warning("Grok generation failed; trying the next provider.")
 
         # Intento con OpenAI
         if self.openai_key:
