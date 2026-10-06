@@ -144,6 +144,15 @@ Los bytes originales y el tipo MIME se conservan al escribir el objeto.
 | `local_emulation` / `local_fallback` | Falló la escritura OCI; `errorCode=oci_write_failed`; solo hay copia local. |
 | `oci` / `completed` | La escritura OCI respondió; aún se necesita lectura independiente. |
 
+`storage.verify_document_storage` no carga configuración
+ni crea clientes. Recibe el resultado, los bytes originales, el bucket y la clave
+esperados. Para emulación requiere `local_root` explícito y devuelve `LOCAL`
+solo si el archivo existe y coincide byte a byte. Para OCI requiere cliente y
+namespace explícitos, comprueba `head_object` (estado y tamaño), `get_object`
+(estado y bytes) y ETag si existe. `require_oci=True` rechaza toda emulación o
+fallback. Cualquier comprobación fallida genera `VerificationError`, sin detalles
+privados del proveedor. No busque el objeto usando únicamente el nombre original.
+
 ### Adaptaciones
 
 | Método | Ruta | Respuesta principal | Errores relevantes |
