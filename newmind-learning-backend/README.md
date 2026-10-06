@@ -131,6 +131,19 @@ curl --fail \
   http://localhost:8000/api/v1/documents
 ```
 
+### Evidencia de almacenamiento de originales (CLO-02)
+
+Las respuestas de carga, listado y detalle incluyen `filename` (nombre original)
+y `storage`: `mode`, `status`, `bucket`, `objectId`, `etag` y `errorCode`.
+La clave usa UUID y un nombre saneado; no es una ruta local ni el nombre original.
+Los bytes originales y el tipo MIME se conservan al escribir el objeto.
+
+| Resultado | Interpretación |
+| --- | --- |
+| `local_emulation` / `completed` | Emulación local inicial; no demuestra persistencia en OCI. |
+| `local_emulation` / `local_fallback` | Falló la escritura OCI; `errorCode=oci_write_failed`; solo hay copia local. |
+| `oci` / `completed` | La escritura OCI respondió; aún se necesita lectura independiente. |
+
 ### Adaptaciones
 
 | Método | Ruta | Respuesta principal | Errores relevantes |

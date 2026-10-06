@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Dict, Any, Optional, List
 from config.settings import settings
 from models.schemas import AlmacenamientoOCI
+from storage.contracts import StorageResult, validate_object_id
 
 logger = logging.getLogger(__name__)
 
@@ -123,12 +124,16 @@ class OCIStorageClient:
             namespace=self.namespace,
         )
 
-    def upload_raw_document(self, filename: str, content: bytes, content_type: str = "application/octet-stream") -> Dict[str, Any]:
-        """Sube un documento original al bucket de documentos de origen."""
+    def upload_raw_document(
+        self, filename: str, content: bytes,
+        content_type: str = "application/octet-stream",
+    ) -> StorageResult:
+        """Store original bytes and report the actual destination without secrets."""
+        validate_object_id(filename)
         bucket_name = settings.OCI_BUCKET_DOCS
+        error_code = None
         if not self.is_emulated and self.client:
             try:
-                import oci
                 response = self.client.put_object(
                     namespace_name=self.namespace,
                     bucket_name=bucket_name,
@@ -136,14 +141,16 @@ class OCIStorageClient:
                     put_object_body=content,
                     content_type=content_type
                 )
-                return {
-                    "status": "completado",
-                    "bucket": bucket_name,
-                    "object_id": filename,
-                    "etag": response.headers.get("etag")
-                }
-            except Exception as e:
-                logger.error(f"Error subiendo a OCI: {e}. Guardando en réplica local.")
+                return StorageResult(
+                    mode="oci",
+                    status="completed",
+                    bucket=bucket_name,
+                    object_id=filename,
+                    etag=response.headers.get("etag"),
+                )
+            except Exception:
+                error_code = "oci_write_failed"
+                logger.warning("Raw-document OCI write failed; using local fallback.")
 
         # Guardado local emulado
         dest_path = settings.LOCAL_STORAGE_DIR / bucket_name / filename
@@ -151,12 +158,13 @@ class OCIStorageClient:
         with open(dest_path, "wb") as f:
             f.write(content)
 
-        return {
-            "status": "emulado_local",
-            "bucket": bucket_name,
-            "object_id": filename,
-            "local_path": str(dest_path)
-        }
+        return StorageResult(
+            mode="local_emulation",
+            status="local_fallback" if error_code else "completed",
+            bucket=bucket_name,
+            object_id=filename,
+            error_code=error_code,
+        )
 
     def upload_educational_json(self, object_id: str, data: Dict[str, Any]) -> AlmacenamientoOCI:
         """Sube el contenido educativo generado en formato JSON al bucket de resultados."""

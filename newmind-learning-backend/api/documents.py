@@ -5,7 +5,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile, status
 
 from api.dependencies import get_document_service
-from api.schemas import DocumentResponse
+from api.schemas import DocumentResponse, DocumentStorageResponse
 from application.services import (
     MAX_DOCUMENT_SIZE,
     DocumentProcessingError,
@@ -21,6 +21,15 @@ def to_response(record: Any) -> DocumentResponse:
     return DocumentResponse(
         id=record.id,
         title=record.title,
+        filename=record.filename,
+        storage=DocumentStorageResponse(
+            mode=record.storage.mode,
+            status=record.storage.status,
+            bucket=record.storage.bucket,
+            object_id=record.storage.object_id,
+            etag=record.storage.etag,
+            error_code=record.storage.error_code,
+        ),
         type=record.type,
         size=record.size,
         created_at=record.created_at,

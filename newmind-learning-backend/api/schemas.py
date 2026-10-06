@@ -62,9 +62,20 @@ class HealthResponse(ApiModel):
     chroma_persist_dir: str
 
 
+class DocumentStorageResponse(ApiModel):
+    mode: str
+    status: str
+    bucket: str
+    object_id: str = Field(serialization_alias="objectId")
+    etag: str | None = None
+    error_code: str | None = Field(default=None, serialization_alias="errorCode")
+
+
 class DocumentResponse(ApiModel):
     id: int
     title: str
+    filename: str
+    storage: DocumentStorageResponse
     type: str
     size: int
     created_at: datetime = Field(serialization_alias="createdAt")

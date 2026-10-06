@@ -18,6 +18,7 @@ from ingestion.loaders import (
     doc_loader,
 )
 from main import create_app
+from storage.contracts import StorageResult
 from models.schemas import (
     AlmacenamientoOCI,
     ContenidoAdaptado,
@@ -102,6 +103,92 @@ class FakeLoader:
         return self.document
 
 
+@pytest.mark.parametrize(
+    "mode,status,etag,error_code",
+    [
+        ("local_emulation", "completed", None, None),
+        ("oci", "completed", "test-etag", None),
+        ("local_emulation", "local_fallback", None, "oci_write_failed"),
+    ],
+)
+def test_storage_metadata_survives_document_lifecycle(
+    api_context, monkeypatch, mode, status, etag, error_code
+):
+    def upload(self, key, content, content_type):
+        return StorageResult(
+            mode=mode, status=status, bucket="documents",
+            object_id=key, etag=etag, error_code=error_code,
+        )
+
+    monkeypatch.setattr(FakeStorage, "upload_raw_document", upload)
+    client, _ = api_context
+    created = upload_document(client, "../original name.txt")
+    assert created["filename"] == "../original name.txt"
+    storage = created["storage"]
+    assert storage["mode"] == mode
+    assert storage["status"] == status
+    assert storage["etag"] == etag
+    assert storage["errorCode"] == error_code
+    assert storage["bucket"] == "documents"
+    assert storage["objectId"].endswith("-original-name.txt")
+    assert "/" not in storage["objectId"]
+    assert "local_path" not in storage
+    assert client.get(f"/api/v1/documents/{created['id']}").json() == created
+    assert client.get("/api/v1/documents").json() == [created]
+    second = upload_document(client, "../original name.txt")
+    assert second["storage"]["objectId"] != storage["objectId"]
+
+
+def test_storage_failure_does_not_create_successful_record(
+    real_ingestion_api_context, monkeypatch
+):
+    client, repository, _, storage = real_ingestion_api_context
+    def fail(*args):
+        raise OSError("private-path-or-provider-detail")
+
+    monkeypatch.setattr(storage, "upload_raw_document", fail)
+    response = client.post(
+        "/api/v1/documents",
+        files={"file": ("source.txt", b"original", "text/plain")},
+    )
+    assert response.status_code == 422
+    assert "private-path-or-provider-detail" not in response.text
+    assert repository.list() == []
+
+
+def test_keys_are_unique_across_repository_restarts():
+    records = []
+    for _ in range(2):
+        service = DocumentService(
+            DocumentRepository(), loader=FakeLoader(), chunker=FakeChunker(),
+            vector_store=FakeVectorStore(), storage=FakeStorage(),
+        )
+        records.append(service.upload("C:\\private\\original name.txt", b"original", "text/plain"))
+    assert records[0].filename == "C:\\private\\original name.txt"
+    assert records[0].id == records[1].id == 1
+    assert records[0].storage_object_id != records[1].storage_object_id
+    assert all(record.storage_object_id.endswith("-original-name.txt") for record in records)
+
+
+def test_in_progress_record_is_not_visible_before_storage_completion():
+    repository = DocumentRepository()
+    storage = FakeStorage()
+    service = DocumentService(
+        repository, loader=FakeLoader(), chunker=FakeChunker(),
+        vector_store=FakeVectorStore(), storage=storage,
+    )
+
+    def upload(key, content, content_type):
+        assert service.list() == []
+        assert service.get(1) is None
+        return StorageResult("local_emulation", "completed", "documents", key)
+
+    storage.upload_raw_document = upload
+    completed = service.upload("source.txt", b"original", "text/plain")
+    assert service.get(completed.id) == completed
+    assert service.list() == [completed]
+
+
 class FakeChunker:
     def __init__(self) -> None:
         self.document: NormalizedDocument | None = None
@@ -120,19 +207,25 @@ class FakeVectorStore:
 
 
 class FakeStorage:
-    def upload_raw_document(self, filename: str, content: bytes, content_type: str) -> dict[str, str]:
-        return {"status": "emulated_local", "object_id": filename}
+    def upload_raw_document(self, filename: str, content: bytes, content_type: str) -> StorageResult:
+        return StorageResult(
+            mode="local_emulation", status="completed",
+            bucket="documents", object_id=filename,
+        )
 
 
 class RecordingStorage:
     def __init__(self) -> None:
         self.uploads: list[dict[str, Any]] = []
 
-    def upload_raw_document(self, filename: str, content: bytes, content_type: str) -> dict[str, str]:
+    def upload_raw_document(self, filename: str, content: bytes, content_type: str) -> StorageResult:
         self.uploads.append(
             {"filename": filename, "content": content, "content_type": content_type}
         )
-        return {"status": "emulated_local", "object_id": filename}
+        return StorageResult(
+            mode="local_emulation", status="completed",
+            bucket="documents", object_id=filename,
+        )
 
 
 class FakeEngine:
@@ -357,7 +450,7 @@ def test_http_upload_uses_real_ingestion_chunking_and_vector_metadata(
     assert chunk["chunk_length"] == len(expected_text)
     assert storage.uploads == [
         {
-            "filename": f"{record.id}-{filename}",
+            "filename": record.storage_object_id,
             "content": content,
             "content_type": content_type,
         }
