@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = Field(default="http://localhost:5173", description="Orígenes CORS separados por comas")
 
     # Proveedores de LLM
+    GROK_API_KEY: Optional[str] = Field(default=None, description="API key for xAI Grok")
     GEMINI_API_KEY: Optional[str] = Field(default=None, description="API Key de Google Gemini")
     OPENAI_API_KEY: Optional[str] = Field(default=None, description="API Key de OpenAI")
     ANTHROPIC_API_KEY: Optional[str] = Field(default=None, description="API Key de Anthropic")

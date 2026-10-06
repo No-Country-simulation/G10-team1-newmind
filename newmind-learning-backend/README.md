@@ -3,7 +3,7 @@
 API REST construida con FastAPI para cargar documentos técnicos y generar
 adaptaciones educativas según perfil, formato, industria y nivel de detalle.
 El backend extrae e indexa contenido, recupera contexto con ChromaDB y genera
-una adaptación mediante Gemini, OpenAI o una alternativa heurística local.
+una adaptación mediante Gemini, Grok, OpenAI o una alternativa heurística local.
 
 > Este documento describe el estado implementado actualmente. La arquitectura
 > completa y sus reglas de dependencia se encuentran en
@@ -53,6 +53,12 @@ directorio. Puede tomar `.env.example` como referencia y mantener las claves
 reales fuera del control de versiones. Sin `.env`, se aplican los valores
 predeterminados declarados en `config/settings.py`.
 
+Para habilitar Grok en ejecución local, agregue `GROK_API_KEY=<clave_de_xai>`
+al `.env` privado del backend o expórtela como variable de entorno. Con Docker
+Compose, defina `GROK_API_KEY` en el entorno de Compose (por ejemplo, en el
+`.env` privado de la raíz); ambos perfiles de backend la reciben. No incluya
+claves reales en archivos versionados ni en el frontend.
+
 ## Capacidades implementadas
 
 ### Ingestión de documentos
@@ -87,8 +93,18 @@ la persistencia del resultado.
 La selección de generación actual intenta, en este orden:
 
 1. Gemini, si existe `GEMINI_API_KEY`, con `gemini-1.5-flash`;
-2. OpenAI, si existe `OPENAI_API_KEY`, con `gpt-4o-mini`;
-3. el generador heurístico local si no hay claves o fallan ambos proveedores.
+2. Grok, si existe `GROK_API_KEY`, con `grok-4.7` mediante la API compatible
+   con OpenAI de xAI (`https://api.x.ai/v1`);
+3. OpenAI, si existe `OPENAI_API_KEY`, con `gpt-4o-mini`;
+4. el generador heurístico local si no hay claves o fallan los proveedores.
+
+Las respuestas de proveedores se solicitan en modo JSON. Si una llamada falla,
+devuelve JSON mal formado o no cumple la estructura requerida (incluidos los
+elementos de flashcards, quiz y tutorial), se intenta el siguiente proveedor
+sin registrar credenciales ni detalles de excepciones. Los formatos resumen y
+guion admiten elementos flexibles; no se valida la exactitud pedagógica ni el
+anclaje factual del texto generado. La respuesta final se valida antes de
+persistirse en OCI.
 
 Los resultados educativos se guardan como JSON en OCI Object Storage o en el
 almacenamiento local emulado.
@@ -192,10 +208,11 @@ mapeo API-dominio, las responsabilidades por capa y las reglas de evolución.
 
 | Variable | Uso actual |
 | --- | --- |
-| `GEMINI_API_KEY` | Habilita el primer intento de generación con Gemini. |
-| `OPENAI_API_KEY` | Habilita OpenAI como segundo intento. |
+| `GEMINI_API_KEY` | Habilita el primer intento con Gemini. |
+| `GROK_API_KEY` | Habilita Grok como segundo intento. |
+| `OPENAI_API_KEY` | Habilita OpenAI como tercer intento. |
 | `ANTHROPIC_API_KEY` | Está declarada y se pasa por Compose, pero Anthropic **no está implementado** en el motor. |
-| `DEFAULT_LLM_PROVIDER` | Está declarada, pero actualmente **no controla** la selección; el orden Gemini → OpenAI → heurístico está codificado. |
+| `DEFAULT_LLM_PROVIDER` | Está declarada, pero actualmente **no controla** la selección; el orden Gemini → Grok → OpenAI → heurístico está codificado. |
 | `DEFAULT_LLM_MODEL` | Está declarada, pero actualmente **no controla** los modelos; estos están fijados en el motor. |
 
 ### OCI Object Storage
@@ -310,8 +327,8 @@ tipos para este backend; no deben asumirse como parte de la verificación actual
   vectores huérfanos.
 - **Salud superficial:** `/health` informa configuración y modo de ejecución,
   pero no realiza operaciones reales contra ChromaDB, OCI ni proveedores LLM.
-- **Selección LLM parcialmente codificada:** el orden y los modelos de Gemini y
-  OpenAI no obedecen todavía a `DEFAULT_LLM_PROVIDER` ni
+- **Selección LLM parcialmente codificada:** el orden y los modelos de Grok,
+  Gemini y OpenAI no obedecen todavía a `DEFAULT_LLM_PROVIDER` ni
   `DEFAULT_LLM_MODEL`.
 - **Anthropic no implementado:** la clave existe en configuración y Compose,
   pero no hay un adaptador que la utilice.
