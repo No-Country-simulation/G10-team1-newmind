@@ -98,10 +98,13 @@ La selección de generación actual intenta, en este orden:
 3. OpenAI, si existe `OPENAI_API_KEY`, con `gpt-4o-mini`;
 4. el generador heurístico local si no hay claves o fallan los proveedores.
 
-Las respuestas de proveedores se solicitan en modo JSON. Si una llamada falla
-o devuelve JSON mal formado, se intenta el siguiente proveedor sin registrar
-credenciales ni detalles de excepciones. La validación estructural de contenido
-generado antes de seleccionar proveedor sigue pendiente.
+Las respuestas de proveedores se solicitan en modo JSON. Si una llamada falla,
+devuelve JSON mal formado o no cumple la estructura requerida (incluidos los
+elementos de flashcards, quiz y tutorial), se intenta el siguiente proveedor
+sin registrar credenciales ni detalles de excepciones. Los formatos resumen y
+guion admiten elementos flexibles; no se valida la exactitud pedagógica ni el
+anclaje factual del texto generado. La respuesta final se valida antes de
+persistirse en OCI.
 
 Los resultados educativos se guardan como JSON en OCI Object Storage o en el
 almacenamiento local emulado.

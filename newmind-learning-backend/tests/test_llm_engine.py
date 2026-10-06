@@ -47,9 +47,22 @@ def _request():
     )
 
 
+def _generated_payload(*, items=None):
+    return {
+        "titulo": "Adapted networks",
+        "introduccion_contextualizada": "An introduction to networks.",
+        "tiempo_estimado_estudio_minutos": 5,
+        "conceptos_clave": ["VCN"],
+        "items": items if items is not None else [
+            {"frente": "What is a VCN?", "dorso": "A virtual network.", "pista_didactica": "Think of a neighborhood."}
+        ],
+    }
+
+
 def _provider_engine(monkeypatch, *, grok=None, gemini=None, openai=None):
     monkeypatch.setattr(engine, "settings", SimpleNamespace(
         GROK_API_KEY=grok, GEMINI_API_KEY=gemini, OPENAI_API_KEY=openai,
+        OCI_BUCKET_OUTPUTS="outputs",
     ))
     return LLMEngine()
 
@@ -107,9 +120,9 @@ def test_grok_key_is_optional_and_can_be_read_from_environment(monkeypatch):
 
 def test_grok_success_uses_xai_endpoint_and_json_mode_before_other_providers(monkeypatch):
     calls = []
-    payload = {"titulo": "Grok adaptation", "items": []}
+    payload = _generated_payload(items=[])
     _mock_openai_sdk(monkeypatch, calls, {"grok": json.dumps(payload)})
-    _mock_gemini_sdk(monkeypatch, calls, json.dumps({"titulo": "Gemini"}))
+    _mock_gemini_sdk(monkeypatch, calls, json.dumps(_generated_payload()))
     provider = _provider_engine(monkeypatch, grok="xai-test-key", gemini="gemini-test-key", openai="openai-test-key")
 
     assert provider._call_llm("system", "user", _request()) == payload
@@ -126,12 +139,13 @@ def test_grok_success_uses_xai_endpoint_and_json_mode_before_other_providers(mon
 @pytest.mark.parametrize("grok_outcome", [RuntimeError("secret-in-provider-error"), "not json"])
 def test_grok_failure_falls_through_to_gemini_then_openai(monkeypatch, caplog, grok_outcome):
     calls = []
-    _mock_openai_sdk(monkeypatch, calls, {"grok": grok_outcome, "openai": '{"titulo": "OpenAI"}'})
+    payload = _generated_payload()
+    _mock_openai_sdk(monkeypatch, calls, {"grok": grok_outcome, "openai": json.dumps(payload)})
     _mock_gemini_sdk(monkeypatch, calls, RuntimeError("gemini-secret-in-error"))
     provider = _provider_engine(monkeypatch, grok="secret-xai", gemini="secret-gemini", openai="secret-openai")
 
     with caplog.at_level(logging.WARNING, logger="llm.engine"):
-        assert provider._call_llm("system", "user", _request()) == {"titulo": "OpenAI"}
+        assert provider._call_llm("system", "user", _request()) == payload
 
     assert [call[0] for call in calls] == ["grok", "grok", "gemini_config", "gemini_model", "gemini", "openai", "openai"]
     assert "secret" not in caplog.text
@@ -140,11 +154,12 @@ def test_grok_failure_falls_through_to_gemini_then_openai(monkeypatch, caplog, g
 
 def test_no_grok_key_retains_gemini_priority(monkeypatch):
     calls = []
-    _mock_openai_sdk(monkeypatch, calls, {"openai": '{"titulo": "OpenAI"}'})
-    _mock_gemini_sdk(monkeypatch, calls, '{"titulo": "Gemini"}')
+    payload = _generated_payload()
+    _mock_openai_sdk(monkeypatch, calls, {"openai": json.dumps(payload)})
+    _mock_gemini_sdk(monkeypatch, calls, json.dumps(payload))
     provider = _provider_engine(monkeypatch, gemini="gemini-test-key", openai="openai-test-key")
 
-    assert provider._call_llm("system", "user", _request()) == {"titulo": "Gemini"}
+    assert provider._call_llm("system", "user", _request()) == payload
     assert [call[0] for call in calls] == ["gemini_config", "gemini_model", "gemini"]
 
 
@@ -164,6 +179,123 @@ def test_all_providers_fail_and_heuristic_remains_available(monkeypatch, caplog)
 def test_no_keys_uses_heuristic_without_importing_providers(monkeypatch):
     provider = _provider_engine(monkeypatch)
     assert provider._call_llm("system", "user", _request()) == provider._generate_heuristic_demo(_request())
+
+
+@pytest.mark.parametrize("invalid", [
+    ["not an object"],
+    {"items": []},
+    {**_generated_payload(), "conceptos_clave": "not a list"},
+    {**_generated_payload(), "tiempo_estimado_estudio_minutos": "not an integer"},
+    {**_generated_payload(), "items": ["not an item"]},
+    {**_generated_payload(), "items": [{"frente": "Question", "dorso": "Answer"}]},
+    {**_generated_payload(), "items": [{"frente": "Question", "dorso": "Answer", "pista_didactica": "  "}]},
+])
+def test_invalid_grok_payload_falls_through_to_gemini_without_leaking_details(monkeypatch, caplog, invalid):
+    calls = []
+    valid = _generated_payload()
+    _mock_openai_sdk(monkeypatch, calls, {"grok": json.dumps(invalid), "openai": json.dumps(valid)})
+    _mock_gemini_sdk(monkeypatch, calls, json.dumps(valid))
+    provider = _provider_engine(monkeypatch, grok="secret-xai", gemini="secret-gemini", openai="secret-openai")
+
+    with caplog.at_level(logging.WARNING, logger="llm.engine"):
+        assert provider._call_llm("system", "user", _request()) == valid
+
+    assert [call[0] for call in calls] == ["grok", "grok", "gemini_config", "gemini_model", "gemini"]
+    assert "secret" not in caplog.text
+    assert "not an item" not in caplog.text
+
+
+@pytest.mark.parametrize("output_format,invalid_item", [
+    (FormatoSalida.QUIZ, {"pregunta": "Question", "opciones": ["A"], "respuesta_correcta": "A"}),
+    (FormatoSalida.TUTORIAL, {"paso": 1, "titulo_paso": "Step", "descripcion": "Do it"}),
+])
+def test_invalid_format_item_from_gemini_falls_through_to_openai(monkeypatch, output_format, invalid_item):
+    calls = []
+    valid = _generated_payload(items=[])
+    _mock_openai_sdk(monkeypatch, calls, {"openai": json.dumps(valid)})
+    _mock_gemini_sdk(monkeypatch, calls, json.dumps(_generated_payload(items=[invalid_item])))
+    provider = _provider_engine(monkeypatch, gemini="gemini-key", openai="openai-key")
+
+    assert provider._call_llm("system", "user", _request().model_copy(update={"formato_salida": output_format})) == valid
+    assert [call[0] for call in calls] == ["gemini_config", "gemini_model", "gemini", "openai", "openai"]
+
+
+def test_invalid_openai_payload_uses_heuristic_before_upload(monkeypatch):
+    calls = []
+    uploads = []
+    _mock_openai_sdk(monkeypatch, calls, {"openai": json.dumps(_generated_payload(items=[{"frente": "broken"}]))})
+    monkeypatch.setattr(engine.rag_retriever, "retrieve_context", lambda **kwargs: ("context", [], 0.9))
+
+    def upload(object_id, payload):
+        uploads.append(payload)
+        return AlmacenamientoOCI(bucket="outputs", objeto_id=object_id)
+
+    monkeypatch.setattr(engine.oci_storage, "upload_educational_json", upload)
+    provider = _provider_engine(monkeypatch, openai="openai-key")
+
+    response = provider.adapt_content(_request())
+
+    assert [call[0] for call in calls] == ["openai", "openai"]
+    assert response.contenido_adaptado.items == provider._generate_heuristic_demo(_request())["items"]
+    assert len(uploads) == 1
+    assert uploads[0]["contenido_adaptado"]["items"] == response.contenido_adaptado.items
+
+
+def test_invalid_grok_and_gemini_use_valid_openai_before_upload(monkeypatch):
+    calls = []
+    uploads = []
+    valid = _generated_payload()
+    _mock_openai_sdk(monkeypatch, calls, {
+        "grok": json.dumps(_generated_payload(items=[{"frente": "broken"}])),
+        "openai": json.dumps(valid),
+    })
+    _mock_gemini_sdk(monkeypatch, calls, json.dumps(_generated_payload(items=[{"frente": "broken"}])))
+    monkeypatch.setattr(engine.rag_retriever, "retrieve_context", lambda **kwargs: ("context", [], 0.9))
+
+    def upload(object_id, payload):
+        uploads.append(payload)
+        return AlmacenamientoOCI(bucket="outputs", objeto_id=object_id)
+
+    monkeypatch.setattr(engine.oci_storage, "upload_educational_json", upload)
+    provider = _provider_engine(monkeypatch, grok="grok-key", gemini="gemini-key", openai="openai-key")
+
+    response = provider.adapt_content(_request())
+
+    assert [call[0] for call in calls] == [
+        "grok", "grok", "gemini_config", "gemini_model", "gemini", "openai", "openai"
+    ]
+    assert len(uploads) == 1
+    assert uploads[0]["contenido_adaptado"]["items"] == response.contenido_adaptado.items == valid["items"]
+
+
+@pytest.mark.parametrize("output_format,item", [
+    (FormatoSalida.QUIZ, {
+        "pregunta": "Question", "opciones": ["A", "B"], "respuesta_correcta": "A",
+        "justificacion_didactica": "Grounded explanation",
+    }),
+    (FormatoSalida.TUTORIAL, {
+        "paso": 1, "titulo_paso": "Step", "descripcion": "Do it", "verificacion": "Check it",
+    }),
+])
+def test_valid_format_items_preserve_provider_response(monkeypatch, output_format, item):
+    calls = []
+    payload = _generated_payload(items=[item])
+    _mock_openai_sdk(monkeypatch, calls, {"grok": json.dumps(payload)})
+    provider = _provider_engine(monkeypatch, grok="grok-key")
+
+    assert provider._call_llm("system", "user", _request().model_copy(update={"formato_salida": output_format})) == payload
+    assert [call[0] for call in calls] == ["grok", "grok"]
+
+
+@pytest.mark.parametrize("output_format", [FormatoSalida.RESUMEN, FormatoSalida.GUION])
+def test_flexible_formats_accept_structurally_valid_items(monkeypatch, output_format):
+    calls = []
+    payload = _generated_payload(items=[{"concept": "Flexible item"}])
+    _mock_openai_sdk(monkeypatch, calls, {"grok": json.dumps(payload)})
+    provider = _provider_engine(monkeypatch, grok="grok-key")
+
+    assert provider._call_llm("system", "user", _request().model_copy(update={"formato_salida": output_format})) == payload
+    assert [call[0] for call in calls] == ["grok", "grok"]
 
 
 def test_adapt_content_vcn_flashcards():

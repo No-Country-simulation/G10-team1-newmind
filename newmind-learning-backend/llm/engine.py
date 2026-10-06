@@ -16,7 +16,10 @@ from models.schemas import (
     EvaluacionCalidad,
     AlmacenamientoOCI,
     PerfilDestinatario,
-    FormatoSalida
+    FormatoSalida,
+    FlashcardItem,
+    QuizItem,
+    TutorialStepItem,
 )
 from llm.prompts import construir_prompt_sistema
 from rag.retriever import rag_retriever
@@ -126,7 +129,7 @@ Genera el JSON estructurado con los campos:
                     messages=messages,
                     response_format={"type": "json_object"},
                 )
-                return json.loads(response.choices[0].message.content)
+                return self._validate_generated(json.loads(response.choices[0].message.content), request)
             except Exception:
                 logger.warning("Grok generation failed; trying the next provider.")
 
@@ -141,7 +144,7 @@ Genera el JSON estructurado con los campos:
                     generation_config={"response_mime_type": "application/json"}
                 )
                 response = model.generate_content(user_prompt)
-                return json.loads(response.text)
+                return self._validate_generated(json.loads(response.text), request)
             except Exception:
                 logger.warning("Gemini generation failed; trying the next provider.")
 
@@ -155,12 +158,33 @@ Genera el JSON estructurado con los campos:
                     messages=messages,
                     response_format={"type": "json_object"}
                 )
-                return json.loads(response.choices[0].message.content)
+                return self._validate_generated(json.loads(response.choices[0].message.content), request)
             except Exception:
                 logger.warning("OpenAI generation failed; using the offline fallback.")
 
         # Modo Demostración Heurística Inteligente (Offline Fallback para pruebas sin costo)
         return self._generate_heuristic_demo(request)
+
+    @staticmethod
+    def _validate_generated(payload: Any, request: SolicitudAdaptacion) -> Dict[str, Any]:
+        """Reject incompatible provider output before selecting it; leave offline output unchanged."""
+        content = ContenidoAdaptado.model_validate(payload)
+        MetadatosAprendizaje.model_validate({
+            "perfil_aplicado": request.perfil_destinatario.value,
+            "formato_generado": request.formato_salida.value,
+            "tiempo_estimado_estudio_minutos": payload.get("tiempo_estimado_estudio_minutos"),
+            "conceptos_clave": payload.get("conceptos_clave"),
+        })
+        item_models = {
+            FormatoSalida.FLASHCARDS: FlashcardItem,
+            FormatoSalida.QUIZ: QuizItem,
+            FormatoSalida.TUTORIAL: TutorialStepItem,
+        }
+        item_model = item_models.get(request.formato_salida)
+        if item_model is not None:
+            for item in content.items:
+                item_model.model_validate(item)
+        return payload
 
     def _generate_heuristic_demo(self, request: SolicitudAdaptacion) -> Dict[str, Any]:
         """Generador heurístico de alta calidad para demostraciones y pruebas del MVP."""
