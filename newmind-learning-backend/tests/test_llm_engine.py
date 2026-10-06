@@ -1,6 +1,12 @@
 """Pruebas del orquestador de adaptación pedagógica."""
+import json
+import logging
+import sys
+from types import ModuleType, SimpleNamespace
+
 import pytest
 
+from config.settings import Settings
 from models.schemas import AlmacenamientoOCI, SolicitudAdaptacion, PerfilDestinatario, FormatoSalida
 from llm.engine import LLMEngine, llm_engine
 from llm import engine
@@ -39,6 +45,125 @@ def _request():
         perfil_destinatario=PerfilDestinatario.PRINCIPIANTE,
         formato_salida=FormatoSalida.FLASHCARDS,
     )
+
+
+def _provider_engine(monkeypatch, *, grok=None, gemini=None, openai=None):
+    monkeypatch.setattr(engine, "settings", SimpleNamespace(
+        GROK_API_KEY=grok, GEMINI_API_KEY=gemini, OPENAI_API_KEY=openai,
+    ))
+    return LLMEngine()
+
+
+def _mock_openai_sdk(monkeypatch, calls, outcomes):
+    sdk = ModuleType("openai")
+
+    def client(*, api_key, **kwargs):
+        provider = "grok" if "base_url" in kwargs else "openai"
+        calls.append((provider, api_key, kwargs))
+
+        def create(**request):
+            calls.append((provider, request))
+            outcome = outcomes[provider]
+            if isinstance(outcome, Exception):
+                raise outcome
+            return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=outcome))])
+
+        return SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
+
+    sdk.OpenAI = client
+    monkeypatch.setitem(sys.modules, "openai", sdk)
+
+
+def _mock_gemini_sdk(monkeypatch, calls, outcome):
+    google = ModuleType("google")
+    google.__path__ = []
+    genai = ModuleType("google.generativeai")
+    genai.configure = lambda **kwargs: calls.append(("gemini_config", kwargs))
+
+    def model(**kwargs):
+        calls.append(("gemini_model", kwargs))
+
+        def generate(_prompt):
+            calls.append(("gemini", _prompt))
+            if isinstance(outcome, Exception):
+                raise outcome
+            return SimpleNamespace(text=outcome)
+
+        return SimpleNamespace(generate_content=generate)
+
+    genai.GenerativeModel = model
+    google.generativeai = genai
+    monkeypatch.setitem(sys.modules, "google", google)
+    monkeypatch.setitem(sys.modules, "google.generativeai", genai)
+
+
+def test_grok_key_is_optional_and_can_be_read_from_environment(monkeypatch):
+    monkeypatch.delenv("GROK_API_KEY", raising=False)
+    assert Settings(_env_file=None).GROK_API_KEY is None
+
+    monkeypatch.setenv("GROK_API_KEY", "xai-test-key")
+    assert Settings(_env_file=None).GROK_API_KEY == "xai-test-key"
+
+
+def test_grok_success_uses_xai_endpoint_and_json_mode_before_other_providers(monkeypatch):
+    calls = []
+    payload = {"titulo": "Grok adaptation", "items": []}
+    _mock_openai_sdk(monkeypatch, calls, {"grok": json.dumps(payload)})
+    _mock_gemini_sdk(monkeypatch, calls, json.dumps({"titulo": "Gemini"}))
+    provider = _provider_engine(monkeypatch, grok="xai-test-key", gemini="gemini-test-key", openai="openai-test-key")
+
+    assert provider._call_llm("system", "user", _request()) == payload
+    assert calls == [
+        ("grok", "xai-test-key", {"base_url": "https://api.x.ai/v1"}),
+        ("grok", {
+            "model": "grok-4.7",
+            "messages": [{"role": "system", "content": "system"}, {"role": "user", "content": "user"}],
+            "response_format": {"type": "json_object"},
+        }),
+    ]
+
+
+@pytest.mark.parametrize("grok_outcome", [RuntimeError("secret-in-provider-error"), "not json"])
+def test_grok_failure_falls_through_to_gemini_then_openai(monkeypatch, caplog, grok_outcome):
+    calls = []
+    _mock_openai_sdk(monkeypatch, calls, {"grok": grok_outcome, "openai": '{"titulo": "OpenAI"}'})
+    _mock_gemini_sdk(monkeypatch, calls, RuntimeError("gemini-secret-in-error"))
+    provider = _provider_engine(monkeypatch, grok="secret-xai", gemini="secret-gemini", openai="secret-openai")
+
+    with caplog.at_level(logging.WARNING, logger="llm.engine"):
+        assert provider._call_llm("system", "user", _request()) == {"titulo": "OpenAI"}
+
+    assert [call[0] for call in calls] == ["grok", "grok", "gemini_config", "gemini_model", "gemini", "openai", "openai"]
+    assert "secret" not in caplog.text
+    assert "Grok" in caplog.text and "Gemini" in caplog.text
+
+
+def test_no_grok_key_retains_gemini_priority(monkeypatch):
+    calls = []
+    _mock_openai_sdk(monkeypatch, calls, {"openai": '{"titulo": "OpenAI"}'})
+    _mock_gemini_sdk(monkeypatch, calls, '{"titulo": "Gemini"}')
+    provider = _provider_engine(monkeypatch, gemini="gemini-test-key", openai="openai-test-key")
+
+    assert provider._call_llm("system", "user", _request()) == {"titulo": "Gemini"}
+    assert [call[0] for call in calls] == ["gemini_config", "gemini_model", "gemini"]
+
+
+def test_all_providers_fail_and_heuristic_remains_available(monkeypatch, caplog):
+    calls = []
+    _mock_openai_sdk(monkeypatch, calls, {"grok": "not json", "openai": RuntimeError("secret-openai-error")})
+    _mock_gemini_sdk(monkeypatch, calls, "not json")
+    provider = _provider_engine(monkeypatch, grok="secret-xai", gemini="secret-gemini", openai="secret-openai")
+
+    with caplog.at_level(logging.WARNING, logger="llm.engine"):
+        result = provider._call_llm("system", "user", _request())
+
+    assert result == provider._generate_heuristic_demo(_request())
+    assert "secret" not in caplog.text
+
+
+def test_no_keys_uses_heuristic_without_importing_providers(monkeypatch):
+    provider = _provider_engine(monkeypatch)
+    assert provider._call_llm("system", "user", _request()) == provider._generate_heuristic_demo(_request())
 
 
 def test_adapt_content_vcn_flashcards():

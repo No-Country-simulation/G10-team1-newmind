@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 
 class LLMEngine:
     def __init__(self):
+        self.grok_key = settings.GROK_API_KEY
         self.gemini_key = settings.GEMINI_API_KEY
         self.openai_key = settings.OPENAI_API_KEY
 
@@ -111,7 +112,24 @@ Genera el JSON estructurado con los campos:
         return response
 
     def _call_llm(self, system_prompt: str, user_prompt: str, request: SolicitudAdaptacion) -> Dict[str, Any]:
-        """Llama a la API de Gemini, OpenAI o genera simulación heurística si no hay API key."""
+        """Try Grok, Gemini, OpenAI, then the offline heuristic fallback."""
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ]
+        if self.grok_key:
+            try:
+                from openai import OpenAI
+                client = OpenAI(api_key=self.grok_key, base_url="https://api.x.ai/v1")
+                response = client.chat.completions.create(
+                    model="grok-4.7",
+                    messages=messages,
+                    response_format={"type": "json_object"},
+                )
+                return json.loads(response.choices[0].message.content)
+            except Exception:
+                logger.warning("Grok generation failed; trying the next provider.")
+
         # Intento con Gemini
         if self.gemini_key:
             try:
@@ -124,8 +142,8 @@ Genera el JSON estructurado con los campos:
                 )
                 response = model.generate_content(user_prompt)
                 return json.loads(response.text)
-            except Exception as e:
-                logger.warning(f"Error llamando a Gemini API: {e}. Probando siguiente proveedor.")
+            except Exception:
+                logger.warning("Gemini generation failed; trying the next provider.")
 
         # Intento con OpenAI
         if self.openai_key:
@@ -134,15 +152,12 @@ Genera el JSON estructurado con los campos:
                 client = OpenAI(api_key=self.openai_key)
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt}
-                    ],
+                    messages=messages,
                     response_format={"type": "json_object"}
                 )
                 return json.loads(response.choices[0].message.content)
-            except Exception as e:
-                logger.warning(f"Error llamando a OpenAI API: {e}.")
+            except Exception:
+                logger.warning("OpenAI generation failed; using the offline fallback.")
 
         # Modo Demostración Heurística Inteligente (Offline Fallback para pruebas sin costo)
         return self._generate_heuristic_demo(request)
