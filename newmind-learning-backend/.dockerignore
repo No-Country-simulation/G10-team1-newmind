@@ -12,5 +12,6 @@ __pycache__
 .pytest_cache
 .coverage
 htmlcov
+chroma_db
 data/chroma_db
 data/oci_local_storage
