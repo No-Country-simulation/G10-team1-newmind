@@ -18,7 +18,7 @@
 
 > Interfaz visual del sistema NuevaMente.
 > Permite cargar documentos técnicos, configurar la adaptación educativa
-> y visualizar el contenido generado por el pipeline multiagente de IA.
+> y visualizar el contenido generado por el backend.
 
 <br/>
 
@@ -30,13 +30,12 @@
 
 - [📖 Descripción general](#-descripción-general)
 - [🚀 Instalación y arranque](#-instalación-y-arranque)
-- [🏗️ Arquitectura — Feature-Sliced Design](#️-arquitectura--feature-sliced-design)
+- [🏗️ Arquitectura — Feature-Sliced Design](#-arquitectura--feature-sliced-design)
 - [📁 Estructura de carpetas](#-estructura-de-carpetas)
 - [📺 Pantallas de la aplicación](#-pantallas-de-la-aplicación)
-- [🔄 Flujo completo del sistema](#-flujo-completo-del-sistema)
-- [🤖 Pipeline multiagente](#-pipeline-multiagente)
+- [🤖 Progreso ilustrativo](#-progreso-ilustrativo)
 - [🧩 Widgets](#-widgets)
-- [🗂️ Entities](#️-entities)
+- [🗂️ Entities](#-entities)
 - [📦 Shared — código reutilizable](#-shared--código-reutilizable)
 - [🔌 Conexión con el backend](#-conexión-con-el-backend)
 - [📐 Convenciones de código](#-convenciones-de-código)
@@ -58,7 +57,7 @@ NuevaMente transforma documentos técnicos en contenido educativo adaptado a dis
 
 - Cargar y validar documentos (PDF, MD, TXT)
 - Recolectar la configuración de la adaptación
-- Visualizar el pipeline de agentes en tiempo real
+- Consultar el estado del trabajo y mostrar una animación ilustrativa, sin telemetría de agentes
 - Renderizar el contenido generado por formato
 - Gestionar el historial de adaptaciones con filtros
 
@@ -88,7 +87,7 @@ NuevaMente transforma documentos técnicos en contenido educativo adaptado a dis
 ### Pasos
 
 ```bash
-# 1. Clonar el repositorio (si no lo tenés)
+# 1. Clonar el repositorio (si aún no está disponible localmente)
 git clone https://github.com/No-Country-simulation/G10-team1-newmind.git
 cd G10-team1-newmind/newmind-learning-frontend
 
@@ -109,7 +108,7 @@ VITE_API_URL=http://localhost:8000
 
 La imagen incluida está pensada únicamente para desarrollo local: ejecuta el servidor de Vite con hot reload y no es una imagen lista para producción. Este flujo no requiere instalar Node.js en el host.
 
-Desde la raíz del repositorio, levantá el frontend y el backend:
+Desde la raíz del repositorio, inicie el frontend y el backend:
 
 ```bash
 docker compose up --build app frontend
@@ -117,7 +116,7 @@ docker compose up --build app frontend
 
 El frontend queda disponible en `http://localhost:5173`, el backend en `http://localhost:8000` y su endpoint de salud en `http://localhost:8000/health`.
 
-Para levantar solamente el frontend desde la raíz:
+Para iniciar solamente el frontend desde la raíz:
 
 ```bash
 docker compose up --build frontend
@@ -131,7 +130,7 @@ Para detener los servicios:
 docker compose down
 ```
 
-> Los flujos actuales del frontend usan datos mock. Ejecutar el frontend y el backend juntos no prueba que esos flujos estén integrados con la API.
+> La carga, la adaptación, el resultado, el historial y las estadísticas del panel consultan la API. Las tarjetas de ejemplos y la animación de etapas son ilustrativas; iniciar ambos servicios no sustituye una prueba funcional de extremo a extremo.
 
 ### Comandos disponibles
 
@@ -258,7 +257,7 @@ newmind-learning-frontend/
     │   ├── document-uploader/
     │   │   └── DocumentUploader.jsx     Zona drag-and-drop para cargar archivos
     │   └── generation-status/
-    │       └── GenerationStatus.jsx     Pipeline multiagente animado en tiempo real
+    │       └── GenerationStatus.jsx     Progreso ilustrativo con etapas animadas
     │
     ├── entities/                        ── Capa: entities ─────────────────────────────
     │   ├── adaptation/ui/
@@ -329,14 +328,14 @@ Pantalla de inicio y primer punto de contacto del usuario.
 <td>Estático</td>
 </tr>
 <tr>
-<td>Stats (4 tarjetas)</td>
-<td>Documentos cargados · Adaptaciones generadas · Formatos disponibles · Score Critic promedio</td>
-<td>Mock local</td>
+<td>Estadísticas (4 tarjetas)</td>
+<td>Documentos cargados · Adaptaciones completadas · Formatos distintos · Promedio de puntuación de evaluación</td>
+<td>Calculadas a partir de listas de la API; no existe un endpoint específico de estadísticas</td>
 </tr>
 <tr>
 <td>Adaptaciones recientes</td>
 <td>Últimas 3 adaptaciones con <code>AdaptationCard</code></td>
-<td>Mock local</td>
+<td>Lista de la API</td>
 </tr>
 <tr>
 <td>Inicio rápido</td>
@@ -345,7 +344,7 @@ Pantalla de inicio y primer punto de contacto del usuario.
 </tr>
 <tr>
 <td>Demos del proyecto</td>
-<td>Los 3 casos de demo definidos en la documentación</td>
+<td>Tres ejemplos estáticos; no son resultados generados ni prueba de entrega</td>
 <td>Estático</td>
 </tr>
 </tbody>
@@ -367,7 +366,7 @@ Flujo de creación en dos pasos secuenciales que se habilitan en orden.
 <tr>
 <td><strong>① Cargar documento</strong></td>
 <td><code>DocumentUploader</code></td>
-<td>Arrastrá o seleccioná un archivo PDF, MD o TXT. Se valida localmente (tipo y tamaño ≤ 20 MB) y se sube al backend.</td>
+<td>Arrastre o seleccione un archivo PDF, MD o TXT. Se valida localmente (tipo y tamaño ≤ 20 MiB) y se sube al backend.</td>
 </tr>
 <tr>
 <td><strong>② Configurar adaptación</strong></td>
@@ -392,11 +391,11 @@ Muestra el resultado de una adaptación. Cambia de vista según el estado.
 <tbody>
 <tr>
 <td><code>processing</code> · <code>pending</code></td>
-<td>Widget <code>GenerationStatus</code> — pipeline de 5 agentes animado en tiempo real</td>
+<td><code>GenerationStatus</code> muestra etapas animadas ilustrativas; el estado real se consulta por la API</td>
 </tr>
 <tr>
 <td><code>completed</code></td>
-<td>Widget <code>ContentViewer</code> — contenido generado + evaluación del Critic Agent</td>
+<td><code>ContentViewer</code> muestra el contenido generado y los datos de evaluación del backend</td>
 </tr>
 <tr>
 <td><code>failed</code></td>
@@ -431,120 +430,13 @@ Los filtros activos se muestran como badges con botón para limpiar todo. La ló
 
 ---
 
-## 🔄 Flujo completo del sistema
+## 🤖 Progreso ilustrativo
 
-```mermaid
-flowchart TD
-    U(["👤 Usuario"])
+`GenerationStatus` presenta cinco etapas visuales animadas. La página de resultados consulta al backend los estados `pending`, `processing`, `completed` y `failed`; la etapa resaltada avanza mediante un temporizador del navegador, no por eventos enviados por agentes. Los nombres de las etapas describen una representación visual, no componentes autónomos implementados.
 
-    subgraph FRONTEND["🖥️ Frontend — NuevaMente"]
-        direction TB
+El backend usa un solo motor de adaptación: recupera contexto RAG, genera contenido y calcula la puntuación de anclaje a partir de la similitud de recuperación. No existe un grafo LangGraph de cinco agentes, un agente crítico independiente ni un ciclo de regeneración guiado por su evaluación. El valor de evaluación mostrado en la interfaz no certifica calidad pedagógica independiente.
 
-        subgraph UPLOAD["📤 1. Carga del documento"]
-            F1["Arrastra o selecciona\nel archivo"]
-            F2{"Validación local\ntipo · tamaño ≤ 20MB"}
-            F3["DocumentUploader\nmuestra preview"]
-        end
-
-        subgraph CONFIG["⚙️ 2. Configuración"]
-            F4["Selecciona Perfil\nPrincipiante / Junior / Lider / Gestor"]
-            F5["Selecciona Formato\nFlashcards / Tutorial / Quiz / Resumen / Guion"]
-            F6["Selecciona Nicho\nGeneral / Fintech / Salud / E-commerce"]
-            F7["Selecciona Nivel de Detalle\nBásico / Intermedio / Didáctico / Detallado"]
-        end
-
-        subgraph PIPELINE["🤖 3. Pipeline en vivo"]
-            F8["GenerationStatus\nmuestra agentes en tiempo real"]
-        end
-
-        subgraph RESULT["📊 4. Resultado"]
-            F9["ContentViewer\nrenderiza según formato"]
-            F10["ScoreRing\nScore del Critic Agent"]
-        end
-    end
-
-    subgraph BACKEND["⚙️ Backend — FastAPI"]
-        B1["POST /api/v1/documents"]
-        B2["POST /api/v1/adaptations"]
-        B3["GET /api/v1/adaptations/:id/status"]
-        B4["GET /api/v1/adaptations/:id"]
-    end
-
-    U --> F1
-    F1 --> F2
-    F2 -->|"✅ válido"| F3
-    F2 -->|"❌ inválido"| F1
-    F3 --> F4 --> F5 --> F6 --> F7
-    F7 -->|"Generar contenido"| B1
-    B1 --> B2
-    B2 --> F8
-    F8 -->|"Polling de estado"| B3
-    B3 -->|"completed"| B4
-    B4 --> F9
-    F9 --> F10
-
-    style FRONTEND fill:#1e293b,stroke:#4f46e5,color:#e2e8f0
-    style BACKEND fill:#1e293b,stroke:#059669,color:#e2e8f0
-    style UPLOAD fill:#0f172a,stroke:#0891b2,color:#e2e8f0
-    style CONFIG fill:#0f172a,stroke:#d97706,color:#e2e8f0
-    style PIPELINE fill:#0f172a,stroke:#7c3aed,color:#e2e8f0
-    style RESULT fill:#0f172a,stroke:#059669,color:#e2e8f0
-```
-
----
-
-## 🤖 Pipeline multiagente
-
-El widget `GenerationStatus` visualiza el pipeline de 5 agentes que procesa cada solicitud en el backend.
-
-```mermaid
-flowchart TD
-    START(["📥 Solicitud recibida\ndocumento + parámetros"])
-
-    subgraph AGENTS["🤖 Sistema Multiagente — LangGraph"]
-        A1["🎯 Orchestrator Agent\nAnaliza la solicitud y define la ruta"]
-        A2["🔍 RAG Researcher Agent\nRecupera fragmentos relevantes del documento"]
-        A3["👤 Context / Profile Agent\nAdapta al perfil con instrucciones pedagógicas"]
-        A4["✏️ Educational Generator\nGenera el contenido educativo estructurado"]
-        A5["⚖️ Critic Agent\nEvalúa calidad, fidelidad y coherencia"]
-    end
-
-    APPROVE{"¿Aprobado?\nscore ≥ umbral"}
-    REGEN["🔄 Regenerar\ncon retroalimentación del Critic"]
-    LIMIT{"¿Límite de\niteraciones?"}
-    OK(["✅ Contenido aprobado\nJSON final"])
-    FAIL(["❌ Fallo\niteraciones agotadas"])
-
-    START --> A1 --> A2 --> A3 --> A4 --> A5 --> APPROVE
-    APPROVE -->|"✅ Sí"| OK
-    APPROVE -->|"❌ No"| REGEN
-    REGEN --> LIMIT
-    LIMIT -->|"No alcanzado"| A4
-    LIMIT -->|"Alcanzado"| FAIL
-
-    style AGENTS fill:#1e293b,stroke:#4f46e5,color:#e2e8f0
-    style A1 fill:#4f46e5,color:#fff,stroke:#4338ca
-    style A2 fill:#0891b2,color:#fff,stroke:#0e7490
-    style A3 fill:#d97706,color:#fff,stroke:#b45309
-    style A4 fill:#059669,color:#fff,stroke:#047857
-    style A5 fill:#7c3aed,color:#fff,stroke:#6d28d9
-    style OK fill:#065f46,color:#fff,stroke:#047857
-    style FAIL fill:#7f1d1d,color:#fff,stroke:#991b1b
-```
-
-<br/>
-
-<table>
-<thead>
-<tr><th>Estado visual</th><th>Ícono</th><th>Significado</th></tr>
-</thead>
-<tbody>
-<tr><td><code>done</code></td><td>✅ verde</td><td>Agente completó su trabajo</td></tr>
-<tr><td><code>active</code></td><td>⏳ spinner brand</td><td>Agente procesando actualmente</td></tr>
-<tr><td><code>idle</code></td><td>○ gris</td><td>Agente esperando su turno</td></tr>
-<tr><td><code>error</code></td><td>⚠️ rojo</td><td>Agente encontró un error</td></tr>
-</tbody>
-</table>
+Consulte el [flujo completo del sistema](../README.md#flujo-completo-del-sistema) para la carga, el almacenamiento del original y la adaptación.
 
 ---
 
@@ -618,7 +510,7 @@ Renderiza el contenido generado según el `format` de la adaptación. Cada forma
 </tbody>
 </table>
 
-Siempre incluye el `ScoreRing` con el score del Critic y la tarjeta de evaluación con los 4 criterios.
+La interfaz presenta la puntuación y los criterios de evaluación recibidos del backend cuando están disponibles. Los cuatro criterios reutilizan la puntuación de anclaje; no son mediciones independientes ni el resultado de un agente crítico.
 
 **Sub-componente:** `EvaluationBreakdown` — fidelidad · alineación al perfil · cumplimiento del formato · coherencia
 
@@ -635,7 +527,7 @@ Zona de carga con drag-and-drop. Valida el archivo localmente antes de enviarlo 
 <tr><th>Estado</th><th>Borde</th><th>Ícono</th><th>Mensaje</th></tr>
 </thead>
 <tbody>
-<tr><td>Idle</td><td>Punteado gris</td><td>☁️</td><td>"Arrastrá o hacé clic para subir"</td></tr>
+<tr><td>En espera</td><td>Punteado gris</td><td>☁️</td><td>Indicaciones para seleccionar el archivo</td></tr>
 <tr><td>Dragging</td><td>Punteado brand</td><td>☁️ azul</td><td>"Suelta el archivo aquí"</td></tr>
 <tr><td>Success</td><td>Verde sólido</td><td>✅</td><td>"¡Archivo cargado correctamente!"</td></tr>
 <tr><td>Error</td><td>Rojo sólido</td><td>⚠️</td><td>Mensaje de error específico</td></tr>
@@ -653,17 +545,17 @@ success             // boolean — marca la zona como exitosa
 
 ---
 
-### `GenerationStatus` — Pipeline en vivo
+### `GenerationStatus` — Progreso ilustrativo
 
-Visualiza los 5 agentes del pipeline con estados animados. Ver sección [Pipeline multiagente](#-pipeline-multiagente) para el diagrama completo.
+Muestra cinco etapas animadas ilustrativas, sin eventos de agentes del backend. Consulte [Progreso ilustrativo](#-progreso-ilustrativo).
 
 **Props:**
 
 ```js
 status          // 'pending' | 'processing' | 'completed' | 'failed'
 currentAgent    // 'orchestrator' | 'researcher' | 'context' | 'generator' | 'critic'
-iteration       // número de iteración actual del Critic (default: 0)
-maxIterations   // límite de iteraciones permitidas (default: 3)
+iteration       // valor visual; la página de resultados usa 0 por defecto
+maxIterations   // máximo visual configurado (por defecto: 3)
 ```
 
 ---
@@ -678,7 +570,7 @@ Representaciones visuales de los objetos del dominio. Solo muestran datos, sin l
 
 Tarjeta compacta de una adaptación. Usada en el dashboard y el historial.
 
-**Muestra:** título del documento · badges de perfil/formato/industria · estado con color semántico · fecha · score del Critic
+**Muestra:** título del documento · etiquetas de perfil/formato/industria · estado con color semántico · fecha · puntuación de evaluación del backend
 
 **Accesibilidad:** `role="button"` · `tabIndex={0}` · soporte teclado con `Enter` · `focus-ring`
 
@@ -862,7 +754,7 @@ Todo lo que puede ser importado desde cualquier capa sin lógica de negocio.
 
 ## 🔌 Conexión con el backend
 
-El frontend usa `VITE_API_URL` y el cliente compartido `src/shared/api/index.js` como única frontera HTTP. Los flujos de nueva adaptación, resultado e historial consumen los endpoints versionados del backend; el dashboard mantiene datos locales hasta que exista un endpoint de estadísticas.
+El frontend usa `VITE_API_URL` y el cliente compartido `src/shared/api/index.js` como frontera HTTP. La carga, el resultado y el historial consumen los endpoints versionados; el panel calcula estadísticas a partir de las listas de documentos y adaptaciones de la API, sin un endpoint específico de estadísticas. Solo las tarjetas de ejemplos permanecen estáticas.
 
 <br/>
 
@@ -888,8 +780,8 @@ El frontend usa `VITE_API_URL` y el cliente compartido `src/shared/api/index.js`
 </tr>
 <tr>
 <td><code>DashboardPage.jsx</code></td>
-<td>Arrays hardcodeados (<code>MOCK_STATS</code>, <code>MOCK_RECENT_ADAPTATIONS</code>)</td>
-<td>Pendiente de endpoint de estadísticas</td>
+<td>Estadísticas y adaptaciones recientes calculadas a partir de listas de la API; tarjetas de ejemplos estáticas</td>
+<td><code>documentsApi.list()</code> + <code>adaptationsApi.list()</code></td>
 </tr>
 <tr>
 <td><code>HistoryPage.jsx</code></td>
