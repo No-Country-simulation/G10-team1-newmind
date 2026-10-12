@@ -92,7 +92,7 @@ la persistencia del resultado.
 
 La selección de generación actual intenta, en este orden:
 
-1. Gemini, si existe `GEMINI_API_KEY`, con `gemini-1.5-flash`;
+1. Gemini, si existe `GEMINI_API_KEY`, con `gemini-3.1-flash-lite`;
 2. Grok, si existe `GROK_API_KEY`, con `grok-4.7` mediante la API compatible
    con OpenAI de xAI (`https://api.x.ai/v1`);
 3. OpenAI, si existe `OPENAI_API_KEY`, con `gpt-4o-mini`;
@@ -335,6 +335,120 @@ La suite cubre:
 
 El repositorio no configura comandos de lint ni de comprobación estática de
 tipos para este backend; no deben asumirse como parte de la verificación actual.
+
+### Evidencia de proveedores
+
+**Primero ejecute la matriz sin red.** Desde `newmind-learning-backend/`:
+
+```bash
+python -B -m pytest -p no:cacheprovider tests/test_llm_engine.py tests/test_llm_provider_smoke.py -q
+```
+
+Estas pruebas aíslan `config.settings`, RAG y OCI **antes** de importar el motor:
+no cargan `.env`, no inicializan Chroma ni almacenamiento y usan dobles de SDK.
+Restauran los módulos al terminar. Las claves ambientales no habilitan llamadas
+reales por sí solas. Una prueba omitida no demuestra ejecución de un proveedor.
+
+| Configuración mínima del motor | Selección esperada si responde con JSON válido |
+| --- | --- |
+| Ninguna clave LLM | Heurístico local; sin importación de SDK. |
+| Solo `GEMINI_API_KEY` | Gemini, `gemini-3.1-flash-lite`. |
+| Solo `GROK_API_KEY` | Grok, `grok-4.7`, destino `https://api.x.ai/v1`. |
+| Solo `OPENAI_API_KEY` | OpenAI, `gpt-4o-mini`. |
+| Varias claves | Primer éxito válido en orden Gemini → Grok → OpenAI; luego heurístico. |
+
+No se necesita una clave OCI para estas pruebas. Mantenga las claves no elegidas
+sin configurar en una prueba real. `DEFAULT_LLM_PROVIDER` y `DEFAULT_LLM_MODEL`
+no cambian este orden ni los modelos codificados. Si un modelo no está disponible
+para la cuenta, registre el bloqueo: no lo sustituya para obtener evidencia.
+
+| Caso de regresión | Prueba identificable en `tests/test_llm_engine.py` |
+| --- | --- |
+| Sin claves, sin SDK | `test_no_keys_uses_heuristic_without_importing_providers` |
+| Primer proveedor disponible | `test_gemini_wins_when_both_keys_are_configured`, `test_no_gemini_key_uses_grok_endpoint_and_json_mode`, `test_only_openai_key_selects_openai_and_hardcoded_model` |
+| Error o JSON mal formado | `test_gemini_failure_falls_through_to_grok_then_openai`, `test_invalid_grok_uses_next_available_openai` |
+| Esquema incompatible | `test_invalid_gemini_payload_falls_through_to_grok_without_leaking_details`, `test_invalid_openai_payload_uses_heuristic_before_upload` |
+| Proveedores agotados | `test_all_providers_fail_and_heuristic_remains_available` |
+
+La lista `items=[]` sigue siendo válida según el contrato actual. Esta matriz
+demuestra selección y validación deterministas, no calidad factual ni acceso real.
+
+#### Smoke real controlado
+
+La [evidencia sanitizada de la issue 56](../docs/issue-56-gemini-smoke-evidence.json)
+registra en `latest_attempt` una respuesta real de Gemini validada por el motor el
+2026-10-12 a las 20:22:42 UTC, con una invocación y sin reintentos. No contiene
+credenciales ni el contenido de la respuesta. Cada ejecución posterior requiere
+una nueva autorización; este resultado no prueba toda la infraestructura ni audita
+la facturación.
+
+No ejecute este paso sin autorización explícita del responsable para **un**
+proveedor/modelo, destino, origen de credenciales y presupuesto. Gemini usa la
+API de Google mediante `google.generativeai`; OpenAI usa `https://api.openai.com/v1`
+mediante su SDK. Grok no está habilitado para este smoke.
+
+Después de esa autorización, configure en un proceso dedicado, sin cargar `.env`:
+
+- `NEWMIND_SMOKE_GATE=authorized` (cualquier otro valor falla);
+- `NEWMIND_SMOKE_PROVIDER=gemini` **o** `openai`;
+- `NEWMIND_SMOKE_ENVIRONMENT=env-01234567`: reemplace el sufijo por un identificador
+  opaco de 8–16 caracteres `[a-z0-9]`, sin nombres, rutas ni datos personales;
+- únicamente la clave correspondiente, suministrada por el origen autorizado,
+  sin escribirla en comandos, historial, registros ni archivos versionados.
+
+```bash
+python -B -m pytest -p no:cacheprovider tests/test_llm_provider_smoke.py::test_real_provider_smoke -q -s
+```
+
+El gate se valida antes de acceder a la clave o importar SDK. Controles parciales,
+alias inválido o credencial ausente fallan de forma segura. El smoke usa texto
+sintético y `_call_llm` real, deshabilita las otras claves y rechaza el heurístico;
+aplica la validación del motor sin recuperación RAG ni persistencia. Un fallo de
+proveedor o esquema no se acepta como éxito. No cambia SDK ni contrato.
+
+#### Excepción de modelo y límites de Gemini (issue 56)
+
+El usuario autorizó explícitamente reemplazar el modelo retirado `gemini-1.5-flash`
+por `gemini-3.1-flash-lite` en producción y en la evidencia de este smoke, como
+excepción al alcance original. No hay sustitución automática posterior. Se mantienen
+el orden Gemini → Grok → OpenAI → heurístico, los otros modelos y el SDK existente.
+
+Solo el smoke Gemini limita la generación a **una invocación de alto nivel**:
+`request_options={"retry": None, "timeout": 30}`, `max_output_tokens=1024` y
+`candidate_count=1`. Conserva `response_mime_type="application/json"` y solicita
+una única flashcard breve con texto sintético. Los parches de fábrica y método
+se restauran al salir, incluso ante errores; no se modifica la configuración de
+generación de producción. El timeout limita la solicitud del SDK, no garantiza
+un límite total de todas las operaciones de red del sistema operativo. Si la firma
+del SDK no admite estas opciones, el smoke falla antes de generar. Un error de
+cuota bloquea la evidencia: no se reintenta automáticamente ni se cambia de modelo.
+
+El usuario declara que la cuenta usa el nivel gratuito; esto **no demuestra** el
+estado de facturación ni constituye un límite monetario verificable localmente.
+No se activa facturación ni se ejecuta una API como parte de este cambio local.
+La tarifa gratuita incluye entrada y salida (también tokens de razonamiento),
+pero los datos del nivel gratuito pueden utilizarse para mejorar productos de Google.
+Se necesita autorización remota separada y confirmación de presupuesto pagado cero.
+
+Fuentes primarias verificadas para esta decisión:
+
+- [Changelog](https://ai.google.dev/gemini-api/docs/changelog): disponibilidad general
+  de `gemini-3.1-flash-lite` desde el 7 de mayo de 2026.
+- [Deprecaciones](https://ai.google.dev/gemini-api/docs/deprecations): cierre previsto
+  el 7 de mayo de 2027.
+- [Precios](https://ai.google.dev/gemini-api/docs/pricing): condiciones del nivel gratuito.
+- [Modelo](https://ai.google.dev/gemini-api/docs/models/gemini-3.1-flash-lite):
+  soporte de JSON y `generate_content`.
+
+El SDK acepta nombres de modelo sin lista cerrada: existe compatibilidad estructural,
+no evidencia de compatibilidad instalada ni de ejecución real exitosa. El smoke
+permanece deshabilitado sin todos los controles explícitos, incluso si hay claves.
+
+Con `-s`, un éxito emite solo JSON con `provider`, `model`, `utc`, `environment`
+y `validation`. No incluya respuestas, excepciones, claves, entorno completo ni
+rutas privadas en la evidencia. Los errores se reducen a mensajes constantes,
+sin traceback de proveedor; la salida y los registros del SDK se descartan.
+Una ejecución real todavía pendiente no se reemplaza por resultados de dobles.
 
 ## Limitaciones conocidas
 

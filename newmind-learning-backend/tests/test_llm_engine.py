@@ -1,4 +1,5 @@
 """Pruebas del orquestador de adaptación pedagógica."""
+import builtins
 import json
 import logging
 import sys
@@ -6,14 +7,21 @@ from types import ModuleType, SimpleNamespace
 
 import pytest
 
-from config.settings import Settings
 from models.schemas import AlmacenamientoOCI, SolicitudAdaptacion, PerfilDestinatario, FormatoSalida
-from llm.engine import LLMEngine, llm_engine
-from llm import engine
+from tests.provider_engine_harness import isolated_engine
 
 
 @pytest.fixture(autouse=True)
-def stub_external_dependencies(monkeypatch):
+def engine_scope(monkeypatch):
+    with isolated_engine() as isolated:
+        monkeypatch.setitem(globals(), "engine", isolated)
+        monkeypatch.setitem(globals(), "LLMEngine", isolated.LLMEngine)
+        monkeypatch.setitem(globals(), "llm_engine", isolated.llm_engine)
+        yield
+
+
+@pytest.fixture(autouse=True)
+def stub_external_dependencies(monkeypatch, engine_scope):
     def fake_llm_response(system_prompt, user_prompt, request):
         return {
             "titulo": "Adapted content",
@@ -34,8 +42,8 @@ def stub_external_dependencies(monkeypatch):
         return "Verified VCN context", [{"text": "Verified VCN context", "similarity": 0.9}], 0.9
 
     monkeypatch.setattr(llm_engine, "_call_llm", fake_llm_response)
-    monkeypatch.setattr("llm.engine.rag_retriever.retrieve_context", fake_retrieve_context)
-    monkeypatch.setattr("llm.engine.oci_storage.upload_educational_json", fake_upload)
+    monkeypatch.setattr(engine.rag_retriever, "retrieve_context", fake_retrieve_context)
+    monkeypatch.setattr(engine.oci_storage, "upload_educational_json", fake_upload)
 
 
 def _request():
@@ -110,12 +118,10 @@ def _mock_gemini_sdk(monkeypatch, calls, outcome):
     monkeypatch.setitem(sys.modules, "google.generativeai", genai)
 
 
-def test_grok_key_is_optional_and_can_be_read_from_environment(monkeypatch):
-    monkeypatch.delenv("GROK_API_KEY", raising=False)
-    assert Settings(_env_file=None).GROK_API_KEY is None
-
-    monkeypatch.setenv("GROK_API_KEY", "xai-test-key")
-    assert Settings(_env_file=None).GROK_API_KEY == "xai-test-key"
+def test_engine_reads_optional_grok_key_from_isolated_settings(monkeypatch):
+    assert LLMEngine().grok_key is None
+    monkeypatch.setattr(engine.settings, "GROK_API_KEY", "xai-test-key")
+    assert LLMEngine().grok_key == "xai-test-key"
 
 
 def test_no_gemini_key_uses_grok_endpoint_and_json_mode(monkeypatch):
@@ -160,6 +166,8 @@ def test_gemini_wins_when_both_keys_are_configured(monkeypatch):
 
     assert provider._call_llm("system", "user", _request()) == payload
     assert [call[0] for call in calls] == ["gemini_config", "gemini_model", "gemini"]
+    assert calls[1][1]["model_name"] == "gemini-3.1-flash-lite"
+    assert calls[1][1]["generation_config"] == {"response_mime_type": "application/json"}
 
 
 @pytest.mark.parametrize("gemini_outcome", [RuntimeError("secret-gemini-error"), "not json", json.dumps({"items": []})])
@@ -193,7 +201,38 @@ def test_all_providers_fail_and_heuristic_remains_available(monkeypatch, caplog)
 
 def test_no_keys_uses_heuristic_without_importing_providers(monkeypatch):
     provider = _provider_engine(monkeypatch)
+    original_import = builtins.__import__
+    attempts = []
+
+    def guarded_import(name, *args, **kwargs):
+        if name == "openai" or name == "google" or name.startswith("google."):
+            attempts.append(name)
+            raise AssertionError("Provider SDK import forbidden")
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", guarded_import)
     assert provider._call_llm("system", "user", _request()) == provider._generate_heuristic_demo(_request())
+    assert attempts == []
+
+
+def test_only_openai_key_selects_openai_and_hardcoded_model(monkeypatch):
+    calls = []
+    payload = _generated_payload()
+    _mock_openai_sdk(monkeypatch, calls, {"openai": json.dumps(payload)})
+    provider = _provider_engine(monkeypatch, openai="synthetic-key")
+    assert provider._call_llm("system", "user", _request()) == payload
+    assert [call[0] for call in calls] == ["openai", "openai"]
+    assert calls[-1][1]["model"] == "gpt-4o-mini"
+
+
+@pytest.mark.parametrize("outcome", [RuntimeError("synthetic"), "not json", json.dumps({"items": []})])
+def test_invalid_grok_uses_next_available_openai(monkeypatch, outcome):
+    calls = []
+    payload = _generated_payload()
+    _mock_openai_sdk(monkeypatch, calls, {"grok": outcome, "openai": json.dumps(payload)})
+    provider = _provider_engine(monkeypatch, grok="synthetic-grok", openai="synthetic-openai")
+    assert provider._call_llm("system", "user", _request()) == payload
+    assert [call[0] for call in calls] == ["grok", "grok", "openai", "openai"]
 
 
 @pytest.mark.parametrize("invalid", [
@@ -373,7 +412,7 @@ def test_valid_adaptation_uploads_success_payload(monkeypatch, output_format, it
 
 def test_grounding_score_preserves_satisfactory_observed_similarity(monkeypatch):
     monkeypatch.setattr(
-        "llm.engine.rag_retriever.retrieve_context",
+        engine.rag_retriever, "retrieve_context",
         lambda query: ("Verified context", [{"text": "Verified context", "similarity": 0.86}], 0.86),
     )
 
@@ -385,7 +424,7 @@ def test_grounding_score_preserves_satisfactory_observed_similarity(monkeypatch)
 
 def test_grounding_score_preserves_insufficient_observed_similarity(monkeypatch):
     monkeypatch.setattr(
-        "llm.engine.rag_retriever.retrieve_context",
+        engine.rag_retriever, "retrieve_context",
         lambda query: ("Weak context", [{"text": "Weak context", "similarity": 0.42}], 0.42),
     )
 
@@ -397,7 +436,7 @@ def test_grounding_score_preserves_insufficient_observed_similarity(monkeypatch)
 
 def test_grounding_score_uses_zero_for_missing_retrieved_similarity(monkeypatch):
     monkeypatch.setattr(
-        "llm.engine.rag_retriever.retrieve_context",
+        engine.rag_retriever, "retrieve_context",
         lambda query: ("", [], 0.0),
     )
 

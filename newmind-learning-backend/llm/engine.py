@@ -126,7 +126,7 @@ Genera el JSON estructurado con los campos:
                 import google.generativeai as genai
                 genai.configure(api_key=self.gemini_key)
                 model = genai.GenerativeModel(
-                    model_name="gemini-1.5-flash",
+                    model_name="gemini-3.1-flash-lite",
                     system_instruction=system_prompt,
                     generation_config={"response_mime_type": "application/json"}
                 )

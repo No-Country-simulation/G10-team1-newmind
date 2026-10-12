@@ -1,0 +1,233 @@
+{
+  "provider": "gemini",
+  "model": "gemini-3.1-flash-lite",
+  "utc": "2026-10-12T19:23:45.405489+00:00",
+  "environment": "env-56gemini",
+  "validation": "not_executed",
+  "request_attempted": false,
+  "generation_invocations_observed": 0,
+  "blocker": "Offline prerequisite or credential unavailable",
+  "root_record_scope": "Original non-executed attempt; see latest_attempt for the current outcome",
+  "total_generation_invocations_observed": 1,
+  "latest_attempt": {
+    "provider": "gemini",
+    "model": "gemini-3.1-flash-lite",
+    "utc": "2026-10-12T20:22:42.182564+00:00",
+    "environment": "env-56gemini",
+    "validation": "passed",
+    "request_attempted": true,
+    "generation_invocations_observed": 1,
+    "reason_code": "validated_real_response",
+    "sdk_version": "0.8.6",
+    "offline_prerequisites": "passed",
+    "credential_parser": "passed",
+    "endpoint_checks_observed": 1,
+    "schema_validation": "Actual engine and harness validation passed on the real provider response",
+    "execution": {
+      "controlled_child_runs_this_continuation": 1,
+      "interpreter_flags": ["-I", "-B"],
+      "os_allowlist": ["SystemRoot", "WINDIR"],
+      "transport": "rest",
+      "endpoint": "generativelanguage.googleapis.com",
+      "retry": null,
+      "request_timeout_seconds": 30,
+      "child_timeout_seconds": 60,
+      "max_output_tokens": 1024,
+      "candidate_count": 1,
+      "response_mime_type": "application/json",
+      "request_bounds_checked_before_underlying_generation": true,
+      "endpoint_and_transport_checked_after_engine_configure": true,
+      "second_generation_or_retry_attempted": false
+    },
+    "scope": {
+      "input": "Existing synthetic one-short-flashcard prompt only",
+      "engine": "Actual existing run_selected_smoke harness and engine",
+      "isolation": "Harness stubs settings, RAG and OCI before engine import; other provider keys absent and heuristic forbidden",
+      "credential": "Only the selected literal assignment parsed with python-dotenv and interpolation disabled",
+      "credential_file_modified": false,
+      "raw_output_or_response_retained": false,
+      "source_or_dependency_changes": false
+    },
+    "limitations": [
+      "One underlying SDK generation invocation was observed; no independent wire-level traffic audit was performed.",
+      "Free-tier status is a user assertion, billing is unaudited and no zero-actual-cost guarantee is claimed.",
+      "Native candidate review remains pending; provider success does not close that review lifecycle."
+    ]
+  },
+  "parser_diagnosis": {
+    "utc": "2026-10-12T20:21:09.418620+00:00",
+    "category": "valid_unquoted_single_line",
+    "reason_code": "overrestrictive_parser_filter",
+    "internal_parser_bug_proven": true,
+    "retained_parser_rejection_stage": "unquoted_value_filter",
+    "regex_or_shell_escaping_failure_proven": false,
+    "synthetic_fixture_validation": "passed",
+    "synthetic_fixtures": ["quoted", "single_quoted", "unquoted", "leading_whitespace", "export", "BOM", "duplicate", "standard_dotenv_value"],
+    "finding": "The old extra value-character filter rejected a valid standard dotenv assignment. Standard quoted and unquoted fixtures showed the regex itself compiled and accepted ordinary syntax.",
+    "correction": "Ephemeral parser now uses python-dotenv on the selected assignment with interpolation disabled, checks parser errors and missing or duplicate assignments, and removes the unsupported extra value-character filter.",
+    "credential_file_modified": false,
+    "generation_invocations_during_offline_diagnosis": 0
+  },
+  "credential_blocked_attempt": {
+    "provider": "gemini",
+    "model": "gemini-3.1-flash-lite",
+    "utc": "2026-10-12T20:17:11.409988+00:00",
+    "environment": "env-56gemini",
+    "validation": "not_executed",
+    "request_attempted": false,
+    "generation_invocations_observed": 0,
+    "reason_code": "unsupported_credential_syntax",
+    "controlled_child_runs_this_continuation": 1,
+    "child_timeout_seconds": 60,
+    "sdk_version": "0.8.6",
+    "launcher_findings": {
+      "retained_SystemRoot_present": true,
+      "retained_SystemRoot_nonempty": true,
+      "retained_WINDIR_present": true,
+      "missing_SystemRoot_historical_cause_confirmed": false,
+      "historical_import_failure_cause": "Unconfirmed; original-spelling minimal environment imports now pass",
+      "uppercase_alias_offline_check": "Failed before completion; not used for the final controlled child",
+      "final_os_allowlist": ["SystemRoot", "WINDIR"],
+      "adjustment": "Preserve original OS variable spelling, verify presence, precompile the ephemeral launcher and separate prerequisite phases; no repository launcher source changed"
+    },
+    "verification": {
+      "launcher_compile": "passed",
+      "sdk_import": "passed",
+      "signature": "passed",
+      "configure_source_inspection": "passed",
+      "installed_rest_endpoint_offline": "generativelanguage.googleapis.com",
+      "endpoint_configuration": "passed",
+      "endpoint_wrapper": "Pins official endpoint and REST transport on every configure call",
+      "focused_tests": {"passed": 61, "deselected": 1, "validation": "passed"},
+      "pip_check": "Previously passed; no dependency changes in this continuation",
+      "full_suite": "not_run"
+    },
+    "safeguards_observed": {
+      "credential_assignment_inspection": "Reached only after offline prerequisites passed; no credential values retained",
+      "credential_interpolation": "Disabled by selected-line parser policy",
+      "ambient_credentials_or_proxy_reused": false,
+      "raw_output_withheld": true,
+      "generation_requests": 0,
+      "automatic_second_child_or_generation": false,
+      "source_or_dependency_changes": false
+    },
+    "limitations": [
+      "The fixed credential-syntax code does not disclose whether the assignment was duplicate, multiline or otherwise rejected by the strict literal-assignment policy.",
+      "No provider response, HTTP status or schema validation result exists because generation was not invoked.",
+      "Request retry, timeout and output bounds remain configured policies, not live-exercised safeguards.",
+      "Native candidate review and independent billing audit remain pending."
+    ],
+    "next_decision": "Decide whether to review and normalize only the selected credential assignment locally without sharing its value, or retain the blocker. No credential file edit or automatic smoke continuation is authorized by this record."
+  },
+  "provisioning_attempt": {
+    "provider": "gemini",
+    "model": "gemini-3.1-flash-lite",
+    "utc": "2026-10-12T20:05:43.5730371+00:00",
+    "timestamp_scope": "Evidence recorded after installation and offline checks",
+    "environment": "env-56gemini",
+    "validation": "not_executed",
+    "request_attempted": false,
+    "generation_invocations_observed": 0,
+    "live_child_launched": false,
+    "reason_code": "sdk_import_failed",
+    "dependency": {
+      "package": "google-generativeai",
+      "declaration": "google-generativeai>=0.7.0",
+      "installed_version": "0.8.6",
+      "interpreter": "Existing backend virtual environment, Python 3.14",
+      "installation": "passed",
+      "installation_attempts": 1,
+      "prior_installer_processes_observed": 0,
+      "index": "https://pypi.org/simple",
+      "binary_wheels_only": true,
+      "pip_isolated": true,
+      "pip_cache_disabled": true,
+      "pip_connection_retries": 0,
+      "temporary_state": "Confined to the existing virtual environment",
+      "requirements_changed": false
+    },
+    "verification": {
+      "offline_launcher_compile": "passed",
+      "sdk_import_prerequisite": "failed",
+      "signature": "skipped",
+      "endpoint_configuration": "skipped",
+      "installed_transport_endpoint": "skipped",
+      "pip_check": "passed",
+      "focused_tests": {
+        "validation": "passed",
+        "passed": 61,
+        "deselected": 1,
+        "live_test_excluded": true
+      },
+      "full_suite": "not_run"
+    },
+    "safeguards_observed": {
+      "credential_read": false,
+      "offline_sdk_network_access_blocked": true,
+      "raw_output_withheld": true,
+      "generation_requests": 0,
+      "source_changes": false,
+      "automatic_repair_or_smoke_retry": false
+    },
+    "limitations": [
+      "The fixed SDK import prerequisite failure does not identify an underlying exception or dependency.",
+      "Passing pip check and deterministic tests does not establish that the installed real SDK imports successfully.",
+      "Request endpoint, retry, timeout and output bounds remain policies only; no live request exercised them.",
+      "Native candidate review remains pending."
+    ],
+    "next_decision": "Authorize a separate offline SDK import investigation, or retain the blocker without further action; no automatic repair or generation continuation was performed."
+  },
+  "offline_diagnosis": {
+    "reason_code": "sdk_not_installed",
+    "phase": "sdk_distribution",
+    "package": "google-generativeai",
+    "interpreter_scope": "Same python launcher and controlled child environment as original run",
+    "launcher_compile": "passed",
+    "credential_read": false,
+    "network_calls": 0,
+    "smoke_rerun": false,
+    "skipped_checks": [
+      "SDK import and signature checks",
+      "Endpoint configuration check",
+      "Dotenv parser and credential checks"
+    ],
+    "next_action": "Decide whether to authorize installing the existing SDK in the selected interpreter or selecting an already provisioned interpreter; neither action nor a smoke retry is authorized by this diagnosis."
+  },
+  "execution": {
+    "controlled_child_runs": 1,
+    "repeat_attempted": false,
+    "maximum_generation_invocations": 1,
+    "sdk_retry": null,
+    "request_timeout_seconds": 30,
+    "child_timeout_seconds": 60,
+    "max_output_tokens": 1024,
+    "candidate_count": 1,
+    "response_mime_type": "application/json",
+    "bounds_exercised_by_live_request": false,
+    "endpoint_policy": "generativelanguage.googleapis.com",
+    "transport_policy": "rest"
+  },
+  "scope": {
+    "input": "Existing synthetic educational prompt only",
+    "environment": "Fresh child with minimal OS environment; no ambient API keys, proxy, mTLS, tracing or credential variables",
+    "credential_policy": "Only the explicitly authorized GEMINI_API_KEY assignment; selected-assignment parsing with interpolation disabled",
+    "credential_access_stage": "Not separately reported",
+    "isolation_policy": "Existing harness stubs settings, RAG and OCI before engine import; heuristic fallback forbidden",
+    "bytecode_writes": "Disabled with -B",
+    "source_changes": false,
+    "raw_child_stdout_stderr": "Captured and withheld; fixed metadata only retained"
+  },
+  "billing": {
+    "authorized_paid_budget_usd": 0,
+    "free_tier": "User assertion only",
+    "independently_audited": false,
+    "billing_activation_attempted": false,
+    "actual_cost_guaranteed_zero": false
+  },
+  "limitations": [
+    "Historical non-executed attempts are preserved separately from the latest passed real-provider attempt.",
+    "Historical SDK absence, import failure and credential-parser rejection remain preserved. The parser rejection was confirmed to be an internal overrestrictive filter and corrected only in the ephemeral launcher.",
+    "The historical import failure cause remains unconfirmed; the retained launcher already included SystemRoot.",
+    "Exactly one underlying generation invocation was observed. No connectivity probe, billing check, list-model request or second generation was performed."
+  ]
+}
