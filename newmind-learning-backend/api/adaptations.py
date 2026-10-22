@@ -59,6 +59,54 @@ def list_adaptations(
     return [to_adaptation_response(record) for record in records]
 
 
+@router.get("/{adaptation_id}/download-json")
+def download_adaptation_json(
+    adaptation_id: int,
+    service: Annotated[AdaptationService, Depends(get_adaptation_service)],
+):
+    from fastapi import Response
+
+    record = service.get(adaptation_id)
+
+    if record is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Adaptation not found.",
+        )
+
+    if record.status != "completed" or not record.json_storage_object_id:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="The adaptation has no confirmed JSON artifact.",
+        )
+
+    if record.json_storage_status != "completado (Backblaze B2)":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="The JSON is not confirmed in Backblaze B2.",
+        )
+
+    try:
+        content = service.document_service.storage.download_educational_json(
+            record.json_storage_object_id
+        )
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
+
+    return Response(
+        content=content,
+        media_type="application/json",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="{record.json_storage_object_id}"'
+            ),
+            "X-Storage-Provider": "Backblaze B2",
+        },
+    )
+
 @router.get("/{adaptation_id}/status", response_model=AdaptationStatusResponse)
 def get_adaptation_status(
     adaptation_id: int,

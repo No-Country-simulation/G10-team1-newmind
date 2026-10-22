@@ -80,6 +80,48 @@ def get_document(
     return to_response(record)
 
 
+@router.get("/{document_id}/download")
+def download_document(
+    document_id: int,
+    service: Annotated[DocumentService, Depends(get_document_service)],
+) -> Response:
+    record = service.get(document_id)
+
+    if record is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found.",
+        )
+
+    if record.storage is None or record.storage.mode != "b2":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="The original document is not confirmed in Backblaze B2.",
+        )
+
+    try:
+        content = service.storage.download_raw_document(
+            record.storage_object_id
+        )
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
+
+    from urllib.parse import quote
+
+    filename = quote(record.filename, safe="")
+    return Response(
+        content=content,
+        media_type="application/octet-stream",
+        headers={
+            "Content-Disposition": f"attachment; filename*=UTF-8''{filename}",
+            "X-Storage-Provider": "Backblaze B2",
+        },
+    )
+
+
 @router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_document(
     document_id: int,

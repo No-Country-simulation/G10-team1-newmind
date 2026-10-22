@@ -156,7 +156,9 @@ def test_storage_failure_does_not_create_successful_record(
     assert repository.list() == []
 
 
-def test_keys_are_unique_across_repository_restarts():
+def test_keys_are_unique_across_repository_restarts(monkeypatch):
+    from config.settings import settings
+    monkeypatch.setattr(settings, "STORAGE_PROVIDER", "local")
     records = []
     for _ in range(2):
         service = DocumentService(
@@ -170,7 +172,9 @@ def test_keys_are_unique_across_repository_restarts():
     assert all(record.storage_object_id.endswith("-original-name.txt") for record in records)
 
 
-def test_in_progress_record_is_not_visible_before_storage_completion():
+def test_in_progress_record_is_not_visible_before_storage_completion(monkeypatch):
+    from config.settings import settings
+    monkeypatch.setattr(settings, "STORAGE_PROVIDER", "local")
     repository = DocumentRepository()
     storage = FakeStorage()
     service = DocumentService(
@@ -213,6 +217,47 @@ class FakeStorage:
             bucket="documents", object_id=filename,
         )
 
+
+class FakeB2Storage:
+    """Simula Backblaze B2 sin realizar llamadas a la nube."""
+
+    mode = "b2"
+
+    def __init__(self) -> None:
+        self.objects: dict[str, bytes] = {}
+        self.json_objects: dict[str, bytes] = {}
+
+    def upload_raw_document(
+        self, filename: str, content: bytes, content_type: str
+    ) -> StorageResult:
+        self.objects[filename] = content
+        return StorageResult(
+            mode="b2",
+            status="completed",
+            bucket="documents",
+            object_id=filename,
+        )
+
+    def download_raw_document(self, object_id: str) -> bytes:
+        if object_id not in self.objects:
+            raise RuntimeError("Documento no encontrado en Backblaze B2.")
+        return self.objects[object_id]
+
+    def upload_educational_json(
+        self, object_id: str, data: dict[str, Any]
+    ) -> AlmacenamientoOCI:
+        content = json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8")
+        self.json_objects[object_id] = content
+        return AlmacenamientoOCI(
+            bucket="outputs",
+            objeto_id=object_id,
+            status_upload="completado (Backblaze B2)",
+        )
+
+    def download_educational_json(self, object_id: str) -> bytes:
+        if object_id not in self.json_objects:
+            raise RuntimeError("JSON no encontrado en Backblaze B2.")
+        return self.json_objects[object_id]
 
 class RecordingStorage:
     def __init__(self) -> None:
@@ -259,8 +304,13 @@ class FakeEngine:
         )
 
 
+
 @pytest.fixture
-def api_context():
+def api_context(monkeypatch):
+    from config.settings import settings
+
+    monkeypatch.setattr(settings, "STORAGE_PROVIDER", "local")
+
     engine = FakeEngine()
     documents = DocumentService(
         DocumentRepository(),
@@ -274,8 +324,13 @@ def api_context():
         yield client, engine
 
 
+
 @pytest.fixture
-def real_ingestion_api_context():
+def real_ingestion_api_context(monkeypatch):
+    from config.settings import settings
+
+    monkeypatch.setattr(settings, "STORAGE_PROVIDER", "local")
+
     repository = DocumentRepository()
     vector_store = FakeVectorStore()
     storage = RecordingStorage()
@@ -385,7 +440,10 @@ def test_document_crud_and_filename_sanitization(api_context):
     assert client.get(f"/api/v1/documents/{document['id']}").status_code == 404
 
 
-def test_document_service_passes_the_canonical_document_directly_and_preserves_content():
+def test_document_service_passes_the_canonical_document_directly_and_preserves_content(monkeypatch):
+    from config.settings import settings
+    monkeypatch.setattr(settings, "STORAGE_PROVIDER", "local")
+
     loader = FakeLoader()
     chunker = FakeChunker()
     vector_store = FakeVectorStore()
@@ -404,6 +462,30 @@ def test_document_service_passes_the_canonical_document_directly_and_preserves_c
     assert record.content == loader.document.text
     assert repository.get(record.id).content == "Canonical content"
     assert vector_store.chunks == [{"chunk_id": "stable-0", "content": "Canonical content"}]
+
+
+@pytest.fixture
+def b2_api_context(monkeypatch):
+    from config.settings import settings
+
+    monkeypatch.setattr(settings, "STORAGE_PROVIDER", "b2")
+
+    storage = FakeB2Storage()
+    documents = DocumentService(
+        DocumentRepository(),
+        loader=FakeLoader(),
+        chunker=FakeChunker(),
+        vector_store=FakeVectorStore(),
+        storage=storage,
+    )
+    adaptations = AdaptationService(
+        documents,
+        AdaptationRepository(),
+        engine=FakeEngine(),
+    )
+
+    with TestClient(create_app(documents, adaptations)) as client:
+        yield client, storage
 
 
 @pytest.mark.parametrize(
@@ -583,3 +665,70 @@ def test_adaptation_for_missing_document_returns_404(api_context):
     response = client.post("/api/v1/adaptations", json=adaptation_payload(999))
     assert response.status_code == 404
     assert response.json()["detail"] == "Document not found."
+
+
+
+def test_download_original_document_from_b2(b2_api_context):
+    client, storage = b2_api_context
+    original_content = b"Original document bytes for B2 recovery."
+
+    response = client.post(
+        "/api/v1/documents",
+        files={
+            "file": (
+                "evidencia-original.txt",
+                original_content,
+                "text/plain",
+            )
+        },
+    )
+    assert response.status_code == 201
+    document = response.json()
+
+    object_id = document["storage"]["objectId"]
+    assert object_id in storage.objects
+    assert storage.objects[object_id] == original_content
+
+    download = client.get(
+        f"/api/v1/documents/{document['id']}/download"
+    )
+
+    assert download.status_code == 200
+    assert download.content == original_content
+    assert download.headers["x-storage-provider"] == "Backblaze B2"
+    assert "attachment" in download.headers["content-disposition"]
+
+
+def test_download_generated_json_from_b2(b2_api_context):
+    client, storage = b2_api_context
+    document = upload_document(client, "source.txt")
+
+    response = client.post(
+        "/api/v1/adaptations",
+        json=adaptation_payload(document["id"]),
+    )
+    assert response.status_code == 202
+    adaptation = response.json()
+    adaptation_id = adaptation["id"]
+
+    # TestClient ejecuta las tareas en segundo plano antes de devolver
+    # el control al test; consultamos el estado para verificarlo.
+    status_response = client.get(
+        f"/api/v1/adaptations/{adaptation_id}/status"
+    )
+    assert status_response.status_code == 200
+    assert status_response.json()["status"] == "completed"
+
+    object_id = f"adaptation-{adaptation_id}.json"
+    assert object_id in storage.json_objects
+
+    saved_json = json.loads(storage.json_objects[object_id])
+    assert saved_json["provider"] == "Backblaze B2"
+
+    download = client.get(
+        f"/api/v1/adaptations/{adaptation_id}/download-json"
+    )
+
+    assert download.status_code == 200
+    assert download.headers["x-storage-provider"] == "Backblaze B2"
+    assert json.loads(download.content) == saved_json

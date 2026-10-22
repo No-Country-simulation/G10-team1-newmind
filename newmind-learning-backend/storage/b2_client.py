@@ -97,4 +97,53 @@ class BackblazeB2StorageClient:
         return AlmacenamientoOCI(bucket=settings.B2_BUCKET_OUTPUTS, objeto_id=object_id, status_upload=status)
 
 
+    def download_raw_document(self, object_id: str) -> bytes:
+        """Recover the original document from the configured B2 bucket."""
+        validate_object_id(object_id)
+
+        if self.is_emulated or self.client is None:
+            raise RuntimeError(
+                "Backblaze B2 is not active; remote download is unavailable."
+            )
+
+        try:
+            response = self.client.get_object(
+                Bucket=settings.B2_BUCKET_DOCS,
+                Key=object_id,
+            )
+            return response["Body"].read()
+        except Exception as exc:
+            logger.warning(
+                "Falló la descarga del documento desde B2 (%s).",
+                type(exc).__name__,
+            )
+            raise RuntimeError(
+                "The original document could not be recovered from Backblaze B2."
+            ) from exc
+
+    def download_educational_json(self, object_id: str) -> bytes:
+        """Recover the generated JSON bytes from the configured B2 bucket."""
+        validate_object_id(object_id)
+
+        if self.is_emulated or self.client is None:
+            raise RuntimeError(
+                "Backblaze B2 is not active; remote download is unavailable."
+            )
+
+        try:
+            response = self.client.get_object(
+                Bucket=settings.B2_BUCKET_OUTPUTS,
+                Key=object_id,
+            )
+            return response["Body"].read()
+        except Exception as exc:
+            logger.warning(
+                "Falló la descarga del JSON desde B2 (%s).",
+                type(exc).__name__,
+            )
+            raise RuntimeError(
+                "The generated JSON could not be recovered from Backblaze B2."
+            ) from exc
+
+
 b2_storage = BackblazeB2StorageClient()

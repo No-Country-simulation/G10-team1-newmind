@@ -21,6 +21,10 @@ from tests.test_vector_store import canonical_chunk, manager_factory
 
 @pytest.fixture
 def selected_document_flow(manager_factory, monkeypatch):
+    from config.settings import settings
+
+    monkeypatch.setattr(settings, "STORAGE_PROVIDER", "local")
+
     manager = manager_factory("document_isolation")
     documents = DocumentService(
         DocumentRepository(), loader=doc_loader,
