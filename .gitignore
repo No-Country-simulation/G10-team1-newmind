@@ -16,6 +16,8 @@ htmlcov/
 venv/
 
 # Backend local runtime data
+/chroma_db/
+/newmind-learning-backend/chroma_db/
 newmind-learning-backend/data/chroma_db/
 newmind-learning-backend/data/oci_local_storage/
 

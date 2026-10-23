@@ -15,13 +15,45 @@ from api.documents import router as documents_router
 from api.schemas import HealthResponse
 from application.services import AdaptationService, DocumentService
 from config.settings import settings
-from storage.oci_client import oci_storage
+from storage.factory import object_storage as oci_storage
 
 
 logger = logging.getLogger(__name__)
 
 
+
+
 def build_health_payload() -> dict[str, Any]:
+    """Return health metadata for the configured storage provider."""
+    storage_readiness = oci_storage.readiness()
+    provider = (settings.STORAGE_PROVIDER or "oci").strip().lower()
+
+    local_fallback = storage_readiness.get(
+        "local_fallback",
+        storage_readiness.get("mode") == "local_emulation",
+    )
+
+    if local_fallback:
+        storage_mode = "emulated"
+    elif provider == "b2":
+        storage_mode = "b2"
+    elif provider == "local":
+        storage_mode = "emulated"
+    else:
+        storage_mode = "oci"
+
+    return {
+        "status": "ok",
+        "service": "newmind-learning-backend",
+        "environment": settings.APP_ENV,
+        "oci_mode": storage_mode,
+        "oci_namespace": storage_readiness.get("namespace"),
+        "oci_storage": storage_readiness,
+        "chroma_persist_dir": settings.CHROMA_PERSIST_DIR,
+    }
+
+
+
     """Return runtime health metadata for container checks."""
     oci_readiness = oci_storage.readiness()
     return {

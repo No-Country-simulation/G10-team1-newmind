@@ -39,7 +39,10 @@ def manifest():
 
 
 @pytest.fixture
-def ingestion_http():
+def ingestion_http(monkeypatch):
+    from config.settings import settings
+    monkeypatch.setattr(settings, "STORAGE_PROVIDER", "local")
+
     repository = DocumentRepository()
     chunks, uploads = [], []
 

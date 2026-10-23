@@ -23,7 +23,7 @@ from models.schemas import (
 )
 from llm.prompts import construir_prompt_sistema
 from rag.retriever import rag_retriever
-from storage.oci_client import oci_storage
+from storage.factory import object_storage as oci_storage
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,7 @@ class LLMEngine:
             query=f"{request.documento_titulo} {request.perfil_destinatario.value} {request.formato_salida.value}",
             **scope,
         )
-        
+
         if not context_text:
             context_text = request.documento_contenido
 
@@ -110,9 +110,12 @@ Genera el JSON estructurado con los campos:
             almacenamiento_oci=AlmacenamientoOCI(bucket=settings.OCI_BUCKET_OUTPUTS, objeto_id=objeto_id)
         )
 
-        # 6. Persist the validated payload in OCI Object Storage (Always Free)
+        # 6. Persist the validated payload using the configured storage provider.
         payload_para_oci = response.model_dump(exclude={"almacenamiento_oci"})
-        response.almacenamiento_oci = oci_storage.upload_educational_json(objeto_id, payload_para_oci)
+        response.almacenamiento_oci = oci_storage.upload_educational_json(
+            objeto_id,
+            payload_para_oci,
+        )
 
         return response
 

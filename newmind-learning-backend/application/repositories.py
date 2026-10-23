@@ -48,6 +48,8 @@ class AdaptationRecord:
     official_response: dict[str, Any] | None = None
     iteration: int | None = None
     error: str | None = None
+    json_storage_object_id: str | None = None
+    json_storage_status: str | None = None
 
 
 class DocumentRepository:

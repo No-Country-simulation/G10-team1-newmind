@@ -76,9 +76,9 @@ class DocumentService:
             vector_store = default_vector_store
 
         if storage is None:
-            from storage.oci_client import oci_storage
+            from storage.factory import object_storage
 
-            storage = oci_storage
+            storage = object_storage
 
         self.loader = loader
         self.chunker = chunker
@@ -143,7 +143,17 @@ class DocumentService:
                 content_type,
             )
 
+            from config.settings import settings
+
+            provider = (settings.STORAGE_PROVIDER or "oci").strip().lower()
+
+            if provider == "b2" and storage.mode != "b2":
+                raise DocumentProcessingError(
+                    "El documento original no quedó confirmado en Backblaze B2."
+                )
+
             record = self.repository.update_storage(record.id, storage)
+
 
         except Exception as exc:
             self.repository.delete(record.id)
@@ -245,6 +255,44 @@ class AdaptationService:
                     "antes de utilizarla."
                 )
 
+            from config.settings import settings
+
+            provider = (settings.STORAGE_PROVIDER or "oci").strip().lower()
+            json_object_id = None
+            json_storage_status = None
+
+            if provider == "b2":
+                json_object_id = f"adaptation-{adaptation_id}.json"
+
+                generated_json = {
+                    "provider": "Backblaze B2",
+                    "adaptation_id": adaptation_id,
+                    "document_id": record.document_id,
+                    "document_title": record.document_title,
+                    "official_response": result.model_dump(mode="json"),
+                    "content": result.contenido_adaptado.model_dump(mode="json"),
+                    "evaluation": {
+                        "approved": approved,
+                        "score": score,
+                        "criteria": {"source_grounding": score},
+                        "issues": issues,
+                    },
+                }
+
+                storage_result = (
+                    self.document_service.storage.upload_educational_json(
+                        json_object_id,
+                        generated_json,
+                    )
+                )
+
+                if storage_result.status_upload != "completado (Backblaze B2)":
+                    raise RuntimeError(
+                        "El JSON no quedó confirmado en Backblaze B2."
+                    )
+
+                json_storage_status = storage_result.status_upload
+
             self.repository.update(
                 adaptation_id,
                 status="completed",
@@ -260,9 +308,18 @@ class AdaptationService:
                 },
                 iteration=1,
                 completed_at=utc_now(),
+                json_storage_object_id=json_object_id,
+                json_storage_status=json_storage_status,
             )
 
         except Exception as exc:
+            import logging
+
+            logging.getLogger(__name__).exception(
+                "Error procesando la adaptación %s",
+                adaptation_id,
+            )
+
             self.repository.update(
                 adaptation_id,
                 status="failed",

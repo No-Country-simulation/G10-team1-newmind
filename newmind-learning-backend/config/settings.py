@@ -55,4 +55,39 @@ class Settings(BaseSettings):
     SAMPLES_DIR: Path = BASE_DIR / "data" / "samples"
     LOCAL_STORAGE_DIR: Path = BASE_DIR / "data" / "oci_local_storage"
 
+
+    # Proveedor de almacenamiento de objetos
+    # OCI continúa siendo el proveedor predeterminado.
+    STORAGE_PROVIDER: str = Field(
+        default="oci",
+        description="Proveedor de almacenamiento: oci, b2 o local",
+    )
+
+    # Backblaze B2 (API compatible con S3)
+    # Las credenciales deben configurarse mediante variables de entorno.
+    B2_ENDPOINT_URL: Optional[str] = Field(
+        default=None,
+        description="Endpoint S3 de Backblaze B2",
+    )
+    B2_REGION: Optional[str] = Field(
+        default=None,
+        description="Región del bucket B2",
+    )
+    B2_KEY_ID: Optional[str] = Field(
+        default=None,
+        description="Identificador de la Application Key de B2",
+    )
+    B2_APPLICATION_KEY: Optional[str] = Field(
+        default=None,
+        description="Secreto de la Application Key de B2",
+    )
+    B2_BUCKET_DOCS: str = Field(
+        default="nuevamente-documentos-origen-b2",
+        description="Bucket B2 para documentos originales",
+    )
+    B2_BUCKET_OUTPUTS: str = Field(
+        default="nuevamente-contenidos-educativos-b2",
+        description="Bucket B2 para contenidos generados",
+    )
+
 settings = Settings()
