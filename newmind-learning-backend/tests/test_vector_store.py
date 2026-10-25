@@ -48,10 +48,8 @@ class EmbeddingClient:
         self._embedding = DeterministicEmbedding()
 
     def get_or_create_collection(self, **kwargs: Any) -> Any:
-        return self._client.get_or_create_collection(
-            **kwargs,
-            embedding_function=self._embedding,
-        )
+        kwargs.setdefault("embedding_function", self._embedding)
+        return self._client.get_or_create_collection(**kwargs)
 
     def delete_collection(self, name: str) -> None:
         self._client.delete_collection(name=name)
@@ -72,7 +70,10 @@ def manager_factory(monkeypatch: pytest.MonkeyPatch, tmp_path: Any):
     )
 
     def create(collection_name: str = "odd_21_acceptance") -> Any:
-        return vector_store_module.VectorStoreManager(collection_name=collection_name)
+        return vector_store_module.VectorStoreManager(
+            collection_name=collection_name,
+            embedding_function=DeterministicEmbedding(),
+        )
 
     return create
 
