@@ -10,6 +10,9 @@ import uvicorn
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+import asyncio
+from contextlib import asynccontextmanager
+
 from api.adaptations import router as adaptations_router
 from api.documents import router as documents_router
 from api.schemas import HealthResponse
@@ -74,10 +77,28 @@ def create_app(
     document_service = document_service or DocumentService(storage=oci_storage)
     adaptation_service = adaptation_service or AdaptationService(document_service)
 
+    @asynccontextmanager
+    async def lifespan(application: FastAPI):
+        rebuild = getattr(
+            document_service,
+            "rebuild_rag_index",
+            None,
+        )
+
+        if callable(rebuild):
+            try:
+                result = await asyncio.to_thread(rebuild)
+                logger.info("RAG startup rebuild result: %s", result)
+            except Exception:
+                logger.exception("RAG startup rebuild failed.")
+
+        yield
+
     application = FastAPI(
         title="NewMind Learning API",
         version="1.0.0",
         description="Contract-first API for document ingestion and educational adaptations.",
+        lifespan=lifespan,
     )
     application.state.document_service = document_service
     application.state.adaptation_service = adaptation_service
