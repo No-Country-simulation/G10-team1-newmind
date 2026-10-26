@@ -709,3 +709,30 @@ class AdaptationService:
             and (format is None or record.format == format)
             and (status is None or record.status == status)
         ]
+
+
+    def delete(self, adaptation_id: int) -> bool:
+        """Delete an adaptation and its persisted metadata."""
+        from config.settings import settings
+
+        record = self.repository.get(adaptation_id)
+        if record is None:
+            return False
+
+        provider = (
+            settings.STORAGE_PROVIDER or "oci"
+        ).strip().lower()
+
+        if provider == "b2":
+            storage = self.document_service.storage
+
+            delete_metadata = getattr(
+                storage,
+                "delete_metadata",
+                None,
+            )
+
+            if callable(delete_metadata):
+                delete_metadata("adaptation", adaptation_id)
+
+        return self.repository.delete(adaptation_id)

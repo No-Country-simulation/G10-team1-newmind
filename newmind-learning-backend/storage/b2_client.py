@@ -146,6 +146,37 @@ class BackblazeB2StorageClient:
             ) from exc
 
 
+    def delete_educational_json(self, object_id: str) -> None:
+        """Delete one generated educational JSON object."""
+        validate_object_id(object_id)
+
+        if self.is_emulated or self.client is None:
+            destination = (
+                settings.LOCAL_STORAGE_DIR
+                / settings.B2_BUCKET_OUTPUTS
+                / object_id
+            )
+
+            if destination.exists():
+                destination.unlink()
+
+            return
+
+        try:
+            self.client.delete_object(
+                Bucket=settings.B2_BUCKET_OUTPUTS,
+                Key=object_id,
+            )
+        except Exception as exc:
+            logger.warning(
+                "Falló la eliminación del JSON generado (%s).",
+                type(exc).__name__,
+            )
+            raise RuntimeError(
+                "The generated JSON could not be deleted."
+            ) from exc
+
+
     def save_metadata(
         self,
         kind: str,

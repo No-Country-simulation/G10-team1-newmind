@@ -191,3 +191,9 @@ class AdaptationRepository:
             updated = replace(current, **changes)
             self._records[adaptation_id] = updated
             return updated
+
+
+    def delete(self, adaptation_id: int) -> bool:
+        """Delete an adaptation from the in-memory repository."""
+        with self._lock:
+            return self._records.pop(adaptation_id, None) is not None

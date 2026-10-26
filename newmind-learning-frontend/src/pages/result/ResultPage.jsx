@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
-import { ArrowLeft, Download, RefreshCw } from "lucide-react";
+import { ArrowLeft, Download, RefreshCw, Trash2 } from "lucide-react";
 
 import { GenerationStatus } from "@/widgets/generation-status/GenerationStatus";
 import { ContentViewer } from "@/widgets/content-viewer/ContentViewer";
@@ -326,7 +326,7 @@ function ReviewGuide({ adaptation }) {
 	);
 }
 
-function PageHeader({ adaptation, onExport, exporting }) {
+function PageHeader({ adaptation, onExport, exporting, onDelete, deleting }) {
 	return (
 		<div className='flex flex-wrap items-center justify-between gap-3'>
 			<Link
@@ -337,20 +337,26 @@ function PageHeader({ adaptation, onExport, exporting }) {
 			</Link>
 
 			{adaptation.status === "completed" && (
-				<Button
-					variant='secondary'
-					size='sm'
-					onClick={onExport}
-					disabled={exporting}
-					leftIcon={
-						exporting ? (
-							<RefreshCw className='w-4 h-4 animate-spin' />
-						) : (
-							<Download className='w-4 h-4' />
-						)
-					}>
-					{exporting ? "Generando PDF..." : "Exportar PDF"}
-				</Button>
+				<div className='flex flex-wrap gap-2'>
+					<Button
+						variant='secondary'
+						size='sm'
+						onClick={onExport}
+						disabled={exporting || deleting}
+						leftIcon={<Download className='w-4 h-4' />}>
+						{exporting ? "Exportando..." : "Exportar PDF"}
+					</Button>
+
+					<Button
+						variant='danger'
+						size='sm'
+						onClick={onDelete}
+						disabled={deleting || exporting}
+
+						leftIcon={<Trash2 className='w-4 h-4'/>}>
+						{deleting ? "Eliminando..." : "Eliminar"}
+					</Button>
+				</div>
 			)}
 		</div>
 	);
@@ -371,6 +377,31 @@ export function ResultPage() {
 	const [exporting, setExporting] = useState(false);
 	const [exportError, setExportError] = useState(null);
 	const [exportSuccess, setExportSuccess] = useState(false);
+
+	// Borrado adaptación
+
+	const [deleting, setDeleting] = useState(false);
+	const [deleteError, setDeleteError] = useState(null);
+
+	const handleDelete = async () => {
+		const confirmed = window.confirm(
+			"¿Estás seguro de que deseas eliminar esta adaptación? Esta acción no se puede deshacer.",
+		);
+
+		if (!confirmed) return;
+
+		setDeleting(true);
+		setDeleteError(null);
+
+		try {
+			await adaptationsApi.delete(adaptation.id);
+			window.location.assign("/history?deleted=success");
+		} catch (err) {
+			setDeleteError(err?.message ?? "No se pudo eliminar la adaptación.");
+		} finally {
+			setDeleting(false);
+		}
+	};
 
 	// Genera y descarga el PDF de la adaptación.
 	const handleExport = async () => {
@@ -438,7 +469,18 @@ export function ResultPage() {
 				adaptation={adaptation}
 				onExport={handleExport}
 				exporting={exporting}
+				onDelete={handleDelete}
+				deleting={deleting}
 			/>
+
+			{/* Mensaje de error de borrado */}
+			{deleteError && (
+				<Alert
+					variant='error'
+					title='No se pudo eliminar la adaptación'>
+					<p>{deleteError}</p>
+				</Alert>
+			)}
 
 			{/* Información general de la adaptación */}
 			<AdaptationMeta adaptation={adaptation} />
