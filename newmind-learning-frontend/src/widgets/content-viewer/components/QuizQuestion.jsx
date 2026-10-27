@@ -21,9 +21,32 @@ export function QuizQuestion({
 
   const options = Array.isArray(question.options) ? question.options : []
   const correctAnswer = question.correct_answer
-  const canEvaluate =
-    typeof correctAnswer === 'string' && correctAnswer.length > 0
-  const isCorrect = submitted && canEvaluate && selected === correctAnswer
+
+const canEvaluate =
+  typeof correctAnswer === 'string' && correctAnswer.trim().length > 0
+
+const normalizeAnswer = (value) =>
+  typeof value === 'string'
+    ? value.trim().replace(/^[A-D]\s*[\).:-]\s*/, '').trim().toLowerCase()
+    : ''
+
+const getOptionLetter = (value) => {
+  if (typeof value !== 'string') return ''
+
+  const match = value.trim().match(/^([A-D])(?:\s*[\).:-]|\s*$)/i)
+  return match ? match[1].toUpperCase() : ''
+}
+
+const selectedLetter = getOptionLetter(selected)
+const correctLetter = getOptionLetter(correctAnswer)
+
+const isCorrect =
+  submitted &&
+  canEvaluate &&
+  (
+    (selectedLetter && correctLetter && selectedLetter === correctLetter) ||
+    normalizeAnswer(selected) === normalizeAnswer(correctAnswer)
+  )
   const justification = question.justification
   const hint = question.hint
 

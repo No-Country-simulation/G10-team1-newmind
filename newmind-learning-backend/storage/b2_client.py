@@ -146,4 +146,162 @@ class BackblazeB2StorageClient:
             ) from exc
 
 
+    def delete_educational_json(self, object_id: str) -> None:
+        """Delete one generated educational JSON object."""
+        validate_object_id(object_id)
+
+        if self.is_emulated or self.client is None:
+            destination = (
+                settings.LOCAL_STORAGE_DIR
+                / settings.B2_BUCKET_OUTPUTS
+                / object_id
+            )
+
+            if destination.exists():
+                destination.unlink()
+
+            return
+
+        try:
+            self.client.delete_object(
+                Bucket=settings.B2_BUCKET_OUTPUTS,
+                Key=object_id,
+            )
+        except Exception as exc:
+            logger.warning(
+                "Falló la eliminación del JSON generado (%s).",
+                type(exc).__name__,
+            )
+            raise RuntimeError(
+                "The generated JSON could not be deleted."
+            ) from exc
+
+
+    def save_metadata(
+        self,
+        kind: str,
+        record_id: int,
+        data: Dict[str, Any],
+    ) -> str:
+        """Persist one document or adaptation metadata record in B2."""
+        if kind not in {"document", "adaptation"}:
+            raise ValueError("Unsupported metadata type.")
+
+        if record_id < 1:
+            raise ValueError("Invalid metadata record ID.")
+
+        bucket = (
+            settings.B2_BUCKET_DOCS
+            if kind == "document"
+            else settings.B2_BUCKET_OUTPUTS
+        )
+        object_id = f"metadata-{kind}-{record_id:010d}.json"
+        validate_object_id(object_id)
+
+        payload = json.dumps(
+            data,
+            indent=2,
+            ensure_ascii=False,
+        ).encode("utf-8")
+
+        mode, _ = self._upload(
+            bucket,
+            object_id,
+            payload,
+            "application/json",
+        )
+
+        if mode != "b2":
+            raise RuntimeError(
+                "Metadata was not persisted to Backblaze B2."
+            )
+
+        return object_id
+
+    def list_metadata(self, kind: str) -> list[Dict[str, Any]]:
+        """Load persisted metadata records of one supported type."""
+        if kind not in {"document", "adaptation"}:
+            raise ValueError("Unsupported metadata type.")
+
+        if self.is_emulated or self.client is None:
+            raise RuntimeError(
+                "Backblaze B2 is not active; metadata recovery is unavailable."
+            )
+
+        bucket = (
+            settings.B2_BUCKET_DOCS
+            if kind == "document"
+            else settings.B2_BUCKET_OUTPUTS
+        )
+        prefix = f"metadata-{kind}-"
+        records: list[Dict[str, Any]] = []
+
+        try:
+            paginator = self.client.get_paginator("list_objects_v2")
+
+            for page in paginator.paginate(
+                Bucket=bucket,
+                Prefix=prefix,
+            ):
+                for item in page.get("Contents", []):
+                    key = item["Key"]
+
+                    if not key.endswith(".json"):
+                        continue
+
+                    response = self.client.get_object(
+                        Bucket=bucket,
+                        Key=key,
+                    )
+
+                    raw = response["Body"].read()
+                    record = json.loads(raw.decode("utf-8"))
+
+                    if isinstance(record, dict):
+                        records.append(record)
+
+            return records
+
+        except Exception as exc:
+            logger.warning(
+                "Metadata recovery from B2 failed (%s).",
+                type(exc).__name__,
+            )
+            raise RuntimeError(
+                "Metadata could not be recovered from Backblaze B2."
+            ) from exc
+
+    def delete_metadata(self, kind: str, record_id: int) -> None:
+        """Delete one persisted metadata record from B2."""
+        if kind not in {"document", "adaptation"}:
+            raise ValueError("Unsupported metadata type.")
+
+        if self.is_emulated or self.client is None:
+            raise RuntimeError(
+                "Backblaze B2 is not active; metadata deletion is unavailable."
+            )
+
+        bucket = (
+            settings.B2_BUCKET_DOCS
+            if kind == "document"
+            else settings.B2_BUCKET_OUTPUTS
+        )
+        object_id = f"metadata-{kind}-{record_id:010d}.json"
+        validate_object_id(object_id)
+
+        try:
+            self.client.delete_object(
+                Bucket=bucket,
+                Key=object_id,
+            )
+        except Exception as exc:
+            logger.warning(
+                "Metadata deletion from B2 failed (%s).",
+                type(exc).__name__,
+            )
+            raise RuntimeError(
+                "Metadata could not be deleted from Backblaze B2."
+            ) from exc
+
+
 b2_storage = BackblazeB2StorageClient()

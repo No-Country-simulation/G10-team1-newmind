@@ -168,6 +168,7 @@ def test_vector_store_receives_the_flat_chunk_metadata(monkeypatch, tmp_path):
     )[0]
     manager = object.__new__(VectorStoreManager)
     manager.collection = RecordingCollection()
+    manager.embedding_function = object()
 
     manager.add_chunks([chunk])
 

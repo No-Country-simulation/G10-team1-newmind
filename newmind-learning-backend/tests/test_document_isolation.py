@@ -233,7 +233,10 @@ def test_document_identity_survives_storage_update_and_repository_restart(select
     assert original.id == restarted.id == 1
     assert original.rag_document_id != restarted.rag_document_id
     assert flow.manager.collection.count() == 2
-    reopened = flow.manager.__class__(collection_name=flow.manager.collection_name)
+    reopened = flow.manager.__class__(
+        collection_name=flow.manager.collection_name,
+        embedding_function=flow.manager.embedding_function,
+    )
     for record in (original, restarted):
         hits = reopened.search_similar("Python", document_id=record.rag_document_id)
         assert len(hits) == 1

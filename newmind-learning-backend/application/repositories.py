@@ -1,3 +1,4 @@
+
 """Thread-safe in-memory repositories used by the MVP application layer."""
 
 from __future__ import annotations
@@ -83,22 +84,42 @@ class DocumentRepository:
             self._next_id += 1
             return record
 
+    def restore(self, records: list[DocumentRecord]) -> None:
+        """Restore persisted records and continue their numeric ID sequence."""
+        with self._lock:
+            for record in records:
+                self._records[record.id] = record
+
+            self._next_id = max(self._records, default=0) + 1
+
     def get(self, document_id: int) -> DocumentRecord | None:
         with self._lock:
             return self._records.get(document_id)
 
     def list(self) -> list[DocumentRecord]:
         with self._lock:
-            return sorted(self._records.values(), key=lambda item: item.id, reverse=True)
+            return sorted(
+                self._records.values(),
+                key=lambda item: item.id,
+                reverse=True,
+            )
 
     def delete(self, document_id: int) -> bool:
         with self._lock:
             return self._records.pop(document_id, None) is not None
 
-    def update_storage(self, document_id: int, storage: StorageResult) -> DocumentRecord:
+    def update_storage(
+        self,
+        document_id: int,
+        storage: StorageResult,
+    ) -> DocumentRecord:
         with self._lock:
             current = self._records[document_id]
-            updated = replace(current, storage_object_id=storage.object_id, storage=storage)
+            updated = replace(
+                current,
+                storage_object_id=storage.object_id,
+                storage=storage,
+            )
             self._records[document_id] = updated
             return updated
 
@@ -137,19 +158,42 @@ class AdaptationRepository:
             self._next_id += 1
             return record
 
+    def restore(self, records: list[AdaptationRecord]) -> None:
+        """Restore persisted records and continue their numeric ID sequence."""
+        with self._lock:
+            for record in records:
+                self._records[record.id] = record
+
+            self._next_id = max(self._records, default=0) + 1
+
     def get(self, adaptation_id: int) -> AdaptationRecord | None:
         with self._lock:
             return self._records.get(adaptation_id)
 
     def list(self) -> list[AdaptationRecord]:
         with self._lock:
-            return sorted(self._records.values(), key=lambda item: item.id, reverse=True)
+            return sorted(
+                self._records.values(),
+                key=lambda item: item.id,
+                reverse=True,
+            )
 
-    def update(self, adaptation_id: int, **changes: Any) -> AdaptationRecord | None:
+    def update(
+        self,
+        adaptation_id: int,
+        **changes: Any,
+    ) -> AdaptationRecord | None:
         with self._lock:
             current = self._records.get(adaptation_id)
             if current is None:
                 return None
+
             updated = replace(current, **changes)
             self._records[adaptation_id] = updated
             return updated
+
+
+    def delete(self, adaptation_id: int) -> bool:
+        """Delete an adaptation from the in-memory repository."""
+        with self._lock:
+            return self._records.pop(adaptation_id, None) is not None

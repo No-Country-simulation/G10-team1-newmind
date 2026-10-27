@@ -12,72 +12,88 @@ function getText(value) {
 	return typeof value === "string" ? value.trim() : "";
 }
 
+
 function SummarySection({ item, index }) {
-	const section =
-		getText(item?.seccion) ||
-		getText(item?.titulo) ||
-		getText(item?.title) ||
-		`Sección ${index + 1}`;
+  const section =
+    getText(item?.concepto) ||
+    getText(item?.seccion) ||
+    getText(item?.titulo) ||
+    getText(item?.title) ||
+    `Sección ${index + 1}`;
 
-	const description =
-		getText(item?.contenido) ||
-		getText(item?.descripcion) ||
-		getText(item?.description) ||
-		getText(item?.content);
+  const description =
+    getText(item?.impacto) ||
+    getText(item?.contenido) ||
+    getText(item?.descripcion) ||
+    getText(item?.description) ||
+    getText(item?.content);
 
-	const hint =
-		getText(item?.pista_didactica) ||
-		getText(item?.pista) ||
-		getText(item?.hint);
+  const recommendation =
+    getText(item?.recomendacion) ||
+    getText(item?.recommendation);
 
-	return (
-		<article className='group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition duration-200 hover:border-blue-200 hover:shadow-md sm:p-6'>
-			<div className='flex items-start gap-4'>
-				<div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700 transition group-hover:bg-blue-100'>
-					<Hash
-						size={19}
-						aria-hidden='true'
-					/>
-				</div>
+  const hint =
+    getText(item?.pista_didactica) ||
+    getText(item?.pista) ||
+    getText(item?.hint);
 
-				<div className='min-w-0 flex-1'>
-					<p className='mb-1 text-xs font-semibold uppercase tracking-wider text-blue-700'>
-						Sección {String(index + 1).padStart(2, "0")}
-					</p>
+  return (
+    <article className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition duration-200 hover:border-blue-200 hover:shadow-md sm:p-6">
+      <div className="flex items-start gap-4">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700 transition group-hover:bg-blue-100">
+          <Hash size={19} aria-hidden="true" />
+        </div>
 
-					<h3 className='text-base font-bold leading-snug text-slate-900 sm:text-lg'>
-						{section}
-					</h3>
+        <div className="min-w-0 flex-1">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-blue-700">
+            Sección {String(index + 1).padStart(2, "0")}
+          </p>
 
-					{description && (
-						<p className='mt-3 whitespace-pre-line text-sm leading-7 text-slate-600'>
-							{description}
-						</p>
-					)}
-				</div>
-			</div>
+          <h3 className="text-base font-bold leading-snug text-slate-900 sm:text-lg">
+            {section}
+          </h3>
 
-			{hint && (
-				<div className='mt-5 flex items-start gap-3 rounded-xl bg-amber-50 p-4'>
-					<Lightbulb
-						size={18}
-						className='mt-0.5 shrink-0 text-amber-600'
-						aria-hidden='true'
-					/>
+          {description && (
+            <p className="mt-3 whitespace-pre-line text-sm leading-7 text-slate-600">
+              {description}
+            </p>
+          )}
 
-					<div>
-						<h4 className='text-sm font-semibold text-amber-900'>
-							Pista didáctica
-						</h4>
-						<p className='mt-1 whitespace-pre-line text-sm leading-6 text-amber-800'>
-							{hint}
-						</p>
-					</div>
-				</div>
-			)}
-		</article>
-	);
+          {recommendation && (
+            <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 p-4">
+              <h4 className="text-sm font-semibold text-blue-900">
+                Recomendación
+              </h4>
+              <p className="mt-1 whitespace-pre-line text-sm leading-6 text-blue-800">
+                {recommendation}
+              </p>
+            </div>
+          )}
+
+          {hint && (
+            <div className="mt-5 flex items-start gap-3 rounded-xl bg-amber-50 p-4">
+              <Lightbulb
+                size={18}
+                className="mt-0.5 shrink-0 text-amber-600"
+                aria-hidden="true"
+              />
+
+              <div>
+                <h4 className="text-sm font-semibold text-amber-900">
+                  Pista didáctica
+                </h4>
+                <p className="mt-1 whitespace-pre-line text-sm leading-6 text-amber-800">
+                  {hint}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </article>
+  );
 }
+
 
 function TextList({
 	title,

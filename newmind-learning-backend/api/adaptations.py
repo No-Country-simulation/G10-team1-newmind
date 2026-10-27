@@ -127,3 +127,22 @@ def get_adaptation(
     if record is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Adaptation not found.")
     return to_adaptation_response(record)
+
+@router.delete("/{adaptation_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_adaptation(
+    adaptation_id: int,
+    service: Annotated[AdaptationService, Depends(get_adaptation_service)],
+) -> None:
+    try:
+        deleted = service.delete(adaptation_id)
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
+
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Adaptation not found.",
+        )
